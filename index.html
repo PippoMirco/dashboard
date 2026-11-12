@@ -8,9 +8,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" id="verweisManifest" href="manifest.webmanifest">
+<link rel="icon" id="verweisIcon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" id="verweisApple" href="icon-192.png">
 <title>Dashboard</title>
 <!--
   Rahmenseite für das Dashboard. Sie zeigt das Dashboard (eine Apps-Script-Webapp) in einem Rahmen,
@@ -109,7 +109,36 @@
   /** Welche Seite im Rahmen starten soll, steht wie beim Dashboard als ?tab=… in der Adresse dieser Rahmenseite. */
   function startTab() {
     var m = /[?&]tab=([a-z-]{1,30})(?:&|$)/.exec(location.search);
-    return m ? m[1] : '';
+    if (m) return m[1] === 'start' ? '' : m[1];   // „start“ heißt ausdrücklich: die Startseite des Dashboards
+    return heimatTab();
+  }
+  /** Ohne ?tab= sagt der Ordner, was gemeint ist: …/aufgaben/ ist die Schnellseite Aufgaben, …/arbeit/ die Seite Arbeit. */
+  function heimatTab() {
+    for (var tab in ORTE) { if (HEIMAT.slice(-ORTE[tab].ordner.length) === ORTE[tab].ordner) return tab; }
+    return '';
+  }
+
+  /* Eigene Adressen für die beiden Schnellseiten. Dieselbe Datei liegt dreimal bei GitHub: im Hauptordner (Dashboard), in aufgaben/
+     und in arbeit/. Jeder Ordner hat ein eigenes Symbol und einen eigenen Namen für den Startbildschirm. So lässt sich die
+     Schnellseite Aufgaben als eigene App ablegen, die auch wirklich bei den Aufgaben startet. Mit nur einer Adresse führte
+     jede Verknüpfung auf die Startseite des Dashboards (Mircos Hinweis). */
+  var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' } };
+  var WURZEL = location.pathname.replace(/(aufgaben|arbeit)\/$/, '');
+  if (WURZEL.slice(-1) !== '/') WURZEL = WURZEL.replace(/[^\/]*$/, '');
+  // Der Ordner, aus dem diese Seite geladen wurde, und ob sie als App vom Startbildschirm läuft (ohne Adressleiste).
+  var HEIMAT = location.pathname.replace(/[^\/]*$/, '');
+  var ALS_APP = false;
+  try { ALS_APP = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) {}
+
+  /** Titel, Symbol und Angaben für den Startbildschirm passend zur offenen Seite. */
+  function kennzeichnen(tab) {
+    var ort = ORTE[tab], ordner = WURZEL + (ort ? ort.ordner : '');
+    document.title = ort ? ort.name : 'Dashboard';
+    try {
+      document.getElementById('verweisManifest').href = ordner + 'manifest.webmanifest';
+      document.getElementById('verweisIcon').href = ordner + 'icon-192.png';
+      document.getElementById('verweisApple').href = ordner + 'icon-192.png';
+    } catch (e) {}
   }
 
   function zeigen(adresse, tab) {
@@ -157,7 +186,7 @@
     // Erst mit diesem „ok“ schickt sie ihre Seitenwechsel hierher, statt das ganze Fenster zu laden.
     if (d.was === 'da') {
       clearTimeout(wecker); hilfe.style.display = 'none';
-      try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + location.pathname }, e.origin); } catch (err) {}
+      try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL }, e.origin); } catch (err) {}
       return;
     }
     // Seitenwechsel im Rahmen (Startseite, Aufgaben, Arbeit): Das Dashboard nennt nur den Namen der Seite, nie eine Adresse.
@@ -173,9 +202,15 @@
     if (d.was === 'ort' && tabOk) ortMerken(d.tab);
   });
 
-  /** Schreibt den offenen Bereich als ?tab=… in die Adresse dieser Rahmenseite, ohne neu zu laden. */
+  /** Schreibt den offenen Bereich in die Adresse dieser Rahmenseite, ohne neu zu laden: die beiden Schnellseiten als eigener
+      Ordner (…/aufgaben/, …/arbeit/), alles andere als ?tab=… am Hauptordner. Neuladen und ein Lesezeichen landen so wieder dort. */
   function ortMerken(tab) {
-    try { history.replaceState(null, '', location.pathname + (tab ? '?tab=' + tab : '')); } catch (e) {}
+    // Als App bleibt die Adresse im eigenen Ordner. Verließe sie ihn, blendete der Browser in der App eine Adressleiste ein.
+    var ziel = ALS_APP
+      ? HEIMAT + (tab === heimatTab() ? '' : '?tab=' + (tab || 'start'))
+      : (ORTE[tab] ? WURZEL + ORTE[tab].ordner : WURZEL + (tab ? '?tab=' + tab : ''));
+    try { history.replaceState(null, '', ziel); } catch (e) {}
+    if (!ALS_APP) kennzeichnen(tab);
   }
 
   // Einmaliges Einrichten per Link: …/#https://script.google.com/macros/s/…/exec
@@ -185,7 +220,8 @@
   if (ausLink) schreiben(ausLink);
 
   var adresse = saeubern(lesen());
-  if (adresse) zeigen(adresse, startTab()); else einrichtenZeigen('');
+  // Die Adresse oben bekommt gleich ihre feste Form (…/dashboard/?tab=schnell wird zu …/dashboard/aufgaben/).
+  if (adresse) { var los = startTab(); ortMerken(los); zeigen(adresse, los); } else { if (!ALS_APP) kennzeichnen(startTab()); einrichtenZeigen(''); }
 })();
 </script>
 </body>
