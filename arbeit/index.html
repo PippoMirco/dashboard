@@ -122,8 +122,9 @@
      und in arbeit/. Jeder Ordner hat ein eigenes Symbol und einen eigenen Namen für den Startbildschirm. So lässt sich die
      Schnellseite Aufgaben als eigene App ablegen, die auch wirklich bei den Aufgaben startet. Mit nur einer Adresse führte
      jede Verknüpfung auf die Startseite des Dashboards (Mircos Hinweis). */
-  var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' } };
-  var WURZEL = location.pathname.replace(/(aufgaben|arbeit)\/$/, '');
+  // Seit v460 auch die Einkaufsliste (einkauf/), Mircos Festlegung: jede eigene Seite bekommt eine eigene Adresse und ein eigenes Symbol.
+  var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' }, einkauf: { ordner: 'einkauf/', name: 'Einkauf' } };
+  var WURZEL = location.pathname.replace(/(aufgaben|arbeit|einkauf)\/$/, '');
   if (WURZEL.slice(-1) !== '/') WURZEL = WURZEL.replace(/[^\/]*$/, '');
   // Der Ordner, aus dem diese Seite geladen wurde, und ob sie als App vom Startbildschirm läuft (ohne Adressleiste).
   var HEIMAT = location.pathname.replace(/[^\/]*$/, '');
