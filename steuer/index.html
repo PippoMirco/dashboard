@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b1120">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" id="verweisManifest" href="manifest.webmanifest">
+<link rel="icon" id="verweisIcon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" id="verweisApple" href="icon-192.png">
+<title>Dashboard</title>
+<!--
+  Rahmenseite für das Dashboard. Sie zeigt das Dashboard (eine Apps-Script-Webapp) in einem Rahmen,
+  damit Googles grauer Balken „Diese Anwendung wurde von einem Google Apps Script-Nutzer erstellt“ nicht erscheint.
+
+  Wichtig: In dieser Datei steht KEINE Adresse des Dashboards und kein Code. Das Repo ist öffentlich.
+  Die Adresse hinterlegt man auf jedem Gerät einmal selbst, sie liegt dann nur im Browser dieses Geräts.
+  Wer diese Seite ohne hinterlegte Adresse öffnet, sieht nur das Eingabefeld.
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: #0b1120; color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  #rahmen { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: none; background: #0b1120; }
+  .mitte { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .karte { width: 100%; max-width: 440px; background: rgba(23, 32, 54, .92); border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 18px; padding: 28px 24px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { font-size: 14px; line-height: 1.55; color: #cbd5e1; margin: 0 0 14px; }
+  input { width: 100%; font-size: 16px; padding: 13px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .16);
+    background: #162035; color: #f8fafc; outline: 0; margin-bottom: 12px; }
+  input:focus { border-color: #8ab4f8; }
+  button { font: inherit; font-size: 15px; font-weight: 700; padding: 12px 16px; border-radius: 10px; border: 0; cursor: pointer;
+    background: #8ab4f8; color: #10203a; width: 100%; }
+  .meldung { font-size: 13.5px; color: #fbd38d; margin: 0 0 12px; display: none; }
+  /* Kleine Leiste, falls das Dashboard im Rahmen nicht erscheint. Sie kommt erst nach einigen Sekunden. */
+  #hilfe { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); display: none; z-index: 2;
+    background: rgba(23, 32, 54, .96); border: 1px solid rgba(255, 255, 255, .16); border-radius: 14px; padding: 12px 14px;
+    font-size: 13.5px; line-height: 1.5; color: #e2e8f0; }
+  #hilfe .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  #hilfe button { width: auto; font-size: 13.5px; padding: 8px 12px; }
+  #hilfe button.leise { background: transparent; color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .25); }
+</style>
+</head>
+<body>
+
+<iframe id="rahmen" title="Dashboard" allow="clipboard-read; clipboard-write; fullscreen; web-share"></iframe>
+
+<div class="mitte" id="einrichten" style="display: none;">
+  <div class="karte">
+    <h1>Dashboard einrichten</h1>
+    <p>Auf diesem Gerät ist noch keine Adresse hinterlegt. Füge hier einmal die Adresse deines Dashboards ein
+       (die lange Adresse, die mit script.google.com beginnt). Sie bleibt nur auf diesem Gerät.</p>
+    <div class="meldung" id="meldung"></div>
+    <input id="adresse" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+           placeholder="https://script.google.com/macros/s/…/exec" aria-label="Adresse des Dashboards">
+    <button type="button" id="merken"
+            title="Hinterlegt die Adresse auf diesem Gerät und öffnet das Dashboard im Rahmen. Die Adresse geht nicht an GitHub, ein Zugangscode in der Adresse wird nicht mitgespeichert.">Hinterlegen und öffnen</button>
+  </div>
+</div>
+
+<div id="hilfe" role="status">
+  <div id="hilfeText">Das Dashboard erscheint nicht? Das passiert, wenn der Browser im Rahmen die Google-Anmeldung nicht durchlässt.</div>
+  <div class="knoepfe">
+    <button type="button" id="direkt"
+            title="Öffnet das Dashboard direkt bei Google statt im Rahmen. Dort einmal anmelden, danach diese Seite neu öffnen. Es wird nichts geändert.">Direkt öffnen</button>
+    <button type="button" class="leise" id="neuLaden"
+            title="Lädt das Dashboard im Rahmen noch einmal. Es wird nichts geändert.">Noch einmal versuchen</button>
+    <button type="button" class="leise" id="vergessen"
+            title="Löscht die auf diesem Gerät hinterlegte Adresse, danach erscheint wieder das Eingabefeld. Am Dashboard selbst ändert sich nichts.">Adresse neu hinterlegen</button>
+    <button type="button" class="leise" id="hilfeZu" aria-label="Hinweis schließen"
+            title="Blendet diesen Hinweis aus. Es wird nichts geändert.">✕</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  // Unter diesem Namen liegt die Adresse im Browser dieses Geräts. Das ist kein Datenspeicher des Dashboards,
+  // nur die Einrichtung dieses einen Geräts, so wie ein Lesezeichen.
+  var SCHLUESSEL = 'dashboard_rahmen_adresse';
+  // Erlaubt ist ausschließlich die Adresse einer veröffentlichten Apps-Script-Webapp. Alles andere wird nie in den Rahmen geladen.
+  var MUSTER = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,}\/exec$/;
+
+  function lesen() { try { return localStorage.getItem(SCHLUESSEL) || ''; } catch (e) { return ''; } }
+  function schreiben(v) { try { localStorage.setItem(SCHLUESSEL, v); return true; } catch (e) { return false; } }
+  function loeschen() { try { localStorage.removeItem(SCHLUESSEL); } catch (e) {} }
+
+  /** Macht aus einer eingefügten Adresse die reine Adresse der Webapp. Alles hinter dem Fragezeichen (auch ein Zugangscode) fällt weg. */
+  function saeubern(roh) {
+    var t = String(roh || '').trim().split('#')[0].split('?')[0];
+    t = t.replace(/\/u\/\d+\//, '/');           // Google schiebt bei mehreren Konten /u/1/ in die Adresse
+    t = t.replace(/\/(dev|exec)\/?$/, '/exec');
+    return MUSTER.test(t) ? t : '';
+  }
+
+  var rahmen = document.getElementById('rahmen');
+  var einrichten = document.getElementById('einrichten');
+  var hilfe = document.getElementById('hilfe');
+  var wecker = 0;
+  // Ein Zugangscode, den die Anmeldeseite im Rahmen übergeben hat. Er steht nur hier im Arbeitsspeicher, solange die Seite offen ist,
+  // und wird nie gespeichert. Gebraucht wird er nur auf Geräten, die Google im Rahmen nicht wiedererkennt.
+  var code = '';
+  var CODE_MUSTER = /^[A-Za-z0-9_.\-]{1,64}$/;
+
+  /** Welche Seite im Rahmen starten soll, steht wie beim Dashboard als ?tab=… in der Adresse dieser Rahmenseite. */
+  function startTab() {
+    var m = /[?&]tab=([a-z-]{1,30})(?:&|$)/.exec(location.search);
+    if (m) return m[1] === 'start' ? '' : m[1];   // „start“ heißt ausdrücklich: die Startseite des Dashboards
+    return heimatTab();
+  }
+  /** Ohne ?tab= sagt der Ordner, was gemeint ist: …/aufgaben/ ist die Schnellseite Aufgaben, …/arbeit/ die Seite Arbeit. */
+  function heimatTab() {
+    for (var tab in ORTE) { var ende = '/' + ORTE[tab].ordner; if (HEIMAT.slice(-ende.length) === ende) return tab; }
+    return '';
+  }
+
+  /* Eigene Adressen für die beiden Schnellseiten. Dieselbe Datei liegt dreimal bei GitHub: im Hauptordner (Dashboard), in aufgaben/
+     und in arbeit/. Jeder Ordner hat ein eigenes Symbol und einen eigenen Namen für den Startbildschirm. So lässt sich die
+     Schnellseite Aufgaben als eigene App ablegen, die auch wirklich bei den Aufgaben startet. Mit nur einer Adresse führte
+     jede Verknüpfung auf die Startseite des Dashboards (Mircos Hinweis). */
+  // Seit v460 auch die Einkaufsliste (einkauf/), Mircos Festlegung: jede eigene Seite bekommt eine eigene Adresse und ein eigenes Symbol.
+  /* ORTE-ANFANG: Diese Zeile schreibt node pruefung/rahmen/symbole.js aus pruefung/rahmen/orte.js, nicht von Hand ändern. Seit v468 hat jede Seite des Dashboards einen eigenen Ordner. */
+  var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' }, einkauf: { ordner: 'einkauf/', name: 'Einkauf' }, geldverschiebung: { ordner: 'konten/', name: 'Konten' }, vermoegen: { ordner: 'vermoegen/', name: 'Vermögen' }, depots: { ordner: 'depots/', name: 'Depots' }, haushalt: { ordner: 'haushalt/', name: 'Haushalt' }, urlaub: { ordner: 'urlaub/', name: 'Urlaub' }, jahre: { ordner: 'jahre/', name: 'Jahre' }, arztrechnungen: { ordner: 'arztrechnungen/', name: 'Arzt' }, archive: { ordner: 'archiv/', name: 'Archiv' }, vertraege: { ordner: 'vertraege/', name: 'Verträge' }, steuer: { ordner: 'steuer/', name: 'Steuer' }, trading: { ordner: 'trading/', name: 'Trading' }, markt: { ordner: 'boerse/', name: 'Börse' }, krypto: { ordner: 'krypto/', name: 'Krypto' }, hauskonto: { ordner: 'hauskonto/', name: 'Hauskonto' }, energie: { ordner: 'energie/', name: 'Strom & Gas' }, zaehler: { ordner: 'zaehler/', name: 'Zähler' }, fahrzeuge: { ordner: 'auto/', name: 'Auto' }, vcds: { ordner: 'vcds/', name: 'VCDS' }, calendar: { ordner: 'termine/', name: 'Termine' }, tickets: { ordner: 'tickets/', name: 'Tickets' }, hoerspiele: { ordner: 'hoerspiele/', name: 'Hörspiele' }, privatnotizen: { ordner: 'notizen/', name: 'Notizen' }, links: { ordner: 'links/', name: 'Links' }, dokumente: { ordner: 'dokumente/', name: 'Dokumente' }, aufgaben: { ordner: 'aufgabenliste/', name: 'Aufgabenliste' }, tasks: { ordner: 'tasks/', name: 'Google Tasks' }, hilfe: { ordner: 'hilfe/', name: 'Hilfe' }, tagebuch: { ordner: 'tagebuch/', name: 'Tagebuch' }, wissen: { ordner: 'wissen/', name: 'Wissen' }, vokabeln: { ordner: 'vokabeln/', name: 'Vokabeln' }, redewendungen: { ordner: 'redewendungen/', name: 'Redewendungen' }, training: { ordner: 'training/', name: 'Training' }, essen: { ordner: 'essen/', name: 'Essen' }, gewicht: { ordner: 'gewicht/', name: 'Gewicht' }, rezepte: { ordner: 'rezepte/', name: 'Rezepte' } };
+  /* ORTE-ENDE */
+  // Der Hauptordner: die Adresse ohne den Ordner einer Seite am Ende. Verglichen wird mit dem Schrägstrich davor, damit
+  // „…/aufgabenliste/“ nicht für „…/liste/“ gehalten würde.
+  var WURZEL = location.pathname;
+  for (var ortTab in ORTE) { var ortEnde = '/' + ORTE[ortTab].ordner; if (WURZEL.slice(-ortEnde.length) === ortEnde) { WURZEL = WURZEL.slice(0, WURZEL.length - ORTE[ortTab].ordner.length); break; } }
+  if (WURZEL.slice(-1) !== '/') WURZEL = WURZEL.replace(/[^\/]*$/, '');
+  // Der Ordner, aus dem diese Seite geladen wurde, und ob sie als App vom Startbildschirm läuft (ohne Adressleiste).
+  var HEIMAT = location.pathname.replace(/[^\/]*$/, '');
+  var ALS_APP = false;
+  try { ALS_APP = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) {}
+
+  /** Titel, Symbol und Angaben für den Startbildschirm passend zur offenen Seite. */
+  function kennzeichnen(tab) {
+    var ort = ORTE[tab], ordner = WURZEL + (ort ? ort.ordner : '');
+    document.title = ort ? ort.name : 'Dashboard';
+    try {
+      document.getElementById('verweisManifest').href = ordner + 'manifest.webmanifest';
+      document.getElementById('verweisIcon').href = ordner + 'icon-192.png';
+      document.getElementById('verweisApple').href = ordner + 'icon-192.png';
+    } catch (e) {}
+  }
+
+  function zeigen(adresse, tab) {
+    einrichten.style.display = 'none';
+    hilfe.style.display = 'none';
+    rahmen.style.display = 'block';
+    // rahmen=1 sagt dem Dashboard, dass es im Rahmen läuft.
+    rahmen.src = adresse + '?rahmen=1' + (tab ? '&tab=' + encodeURIComponent(tab) : '') + (code ? '&code=' + encodeURIComponent(code) : '');
+    // Von außen lässt sich nicht sehen, ob Google im Rahmen etwas anzeigt. Deshalb kommt nach einer Weile
+    // ein kleiner Hinweis mit Auswegen. Meldet sich das Dashboard vorher (Nachricht „da“), bleibt er weg.
+    clearTimeout(wecker);
+    wecker = setTimeout(function () { hilfe.style.display = 'block'; }, 12000);
+  }
+
+  function einrichtenZeigen(text) {
+    clearTimeout(wecker);
+    rahmen.style.display = 'none'; rahmen.removeAttribute('src');
+    hilfe.style.display = 'none';
+    einrichten.style.display = 'flex';
+    var m = document.getElementById('meldung');
+    m.textContent = text || ''; m.style.display = text ? 'block' : 'none';
+  }
+
+  function hinterlegen(roh) {
+    var a = saeubern(roh);
+    if (!a) { einrichtenZeigen('Das ist keine Adresse des Dashboards. Sie beginnt mit https://script.google.com/macros/s/ und endet auf /exec.'); return; }
+    if (!schreiben(a)) { einrichtenZeigen('Dieser Browser lässt das Speichern nicht zu (etwa im privaten Modus). Ohne das geht die Rahmenseite hier nicht.'); return; }
+    zeigen(a, startTab());
+  }
+
+  document.getElementById('merken').addEventListener('click', function () { hinterlegen(document.getElementById('adresse').value); });
+  document.getElementById('adresse').addEventListener('keydown', function (e) { if (e.key === 'Enter') hinterlegen(this.value); });
+  document.getElementById('direkt').addEventListener('click', function () { var a = lesen(); if (a) window.open(a, '_blank', 'noopener'); });
+  document.getElementById('neuLaden').addEventListener('click', function () { var a = lesen(); if (a) zeigen(a, startTab()); });
+  document.getElementById('vergessen').addEventListener('click', function () { loeschen(); einrichtenZeigen(''); });
+  document.getElementById('hilfeZu').addEventListener('click', function () { hilfe.style.display = 'none'; });
+
+  // Nachrichten aus dem Dashboard. Angenommen werden sie nur aus dem Rahmen selbst und nur von Googles Adressen.
+  window.addEventListener('message', function (e) {
+    if (!/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(e.origin) && e.origin !== 'https://script.google.com') return;
+    var d = e.data;
+    if (!d || typeof d !== 'object' || d.dashboardRahmen !== 1) return;
+    var tabOk = typeof d.tab === 'string' && /^[a-z-]{0,30}$/.test(d.tab);
+    // „da“: Das Dashboard (oder seine Anmeldeseite) ist im Rahmen angekommen. Der Hinweis bleibt weg, und die Seite bekommt „ok“ zurück.
+    // Erst mit diesem „ok“ schickt sie ihre Seitenwechsel hierher, statt das ganze Fenster zu laden.
+    if (d.was === 'da') {
+      clearTimeout(wecker); hilfe.style.display = 'none';
+      try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL }, e.origin); } catch (err) {}
+      return;
+    }
+    // Seitenwechsel im Rahmen (Startseite, Aufgaben, Arbeit): Das Dashboard nennt nur den Namen der Seite, nie eine Adresse.
+    // „code“ kommt von der Anmeldeseite: Dashboard mit dem eingetippten Code im Rahmen neu laden.
+    if ((d.was === 'gehe' || d.was === 'code') && tabOk) {
+      if (typeof d.code === 'string' && CODE_MUSTER.test(d.code)) code = d.code;
+      var a = lesen();
+      if (a) { ortMerken(d.tab); zeigen(a, d.tab); }
+      return;
+    }
+    // „ort“: Im Dashboard wurde ein anderer Bereich geöffnet (ohne neue Seite). Nur die Adresse hier oben zieht nach,
+    // damit Neuladen und ein Lesezeichen wieder dort landen.
+    if (d.was === 'ort' && tabOk) ortMerken(d.tab);
+  });
+
+  /** Schreibt den offenen Bereich in die Adresse dieser Rahmenseite, ohne neu zu laden: die beiden Schnellseiten als eigener
+      Ordner (…/aufgaben/, …/arbeit/), alles andere als ?tab=… am Hauptordner. Neuladen und ein Lesezeichen landen so wieder dort. */
+  function ortMerken(tab) {
+    // Als App bleibt die Adresse im eigenen Ordner. Verließe sie ihn, blendete der Browser in der App eine Adressleiste ein.
+    var ziel = ALS_APP
+      ? HEIMAT + (tab === heimatTab() ? '' : '?tab=' + (tab || 'start'))
+      : (ORTE[tab] ? WURZEL + ORTE[tab].ordner : WURZEL + (tab ? '?tab=' + tab : ''));
+    try { history.replaceState(null, '', ziel); } catch (e) {}
+    if (!ALS_APP) kennzeichnen(tab);
+  }
+
+  // Einmaliges Einrichten per Link: …/#https://script.google.com/macros/s/…/exec
+  // Der Teil hinter dem # geht nie an GitHub und wird danach sofort aus der Adresszeile genommen.
+  var ausLink = location.hash.length > 1 ? saeubern(decodeURIComponent(location.hash.substring(1))) : '';
+  if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+  if (ausLink) schreiben(ausLink);
+
+  var adresse = saeubern(lesen());
+  // Die Adresse oben bekommt gleich ihre feste Form (…/dashboard/?tab=schnell wird zu …/dashboard/aufgaben/).
+  if (adresse) { var los = startTab(); ortMerken(los); zeigen(adresse, los); } else { if (!ALS_APP) kennzeichnen(startTab()); einrichtenZeigen(''); }
+})();
+</script>
+</body>
+</html>
