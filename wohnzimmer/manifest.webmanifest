@@ -1,6 +1,6 @@
 {
-  "name": "Wohnzimmer",
-  "short_name": "Wohnzimmer",
+  "name": "Kommandozentrale",
+  "short_name": "Zentrale",
   "id": "./",
   "start_url": "./",
   "scope": "./",
