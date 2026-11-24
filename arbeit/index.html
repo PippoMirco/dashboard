@@ -43,11 +43,37 @@
   #hilfe .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   #hilfe button { width: auto; font-size: 13.5px; padding: 8px 12px; }
   #hilfe button.leise { background: transparent; color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .25); }
+  #hilfe { z-index: 5; }
+  /* Sofortbild, seit v566: das letzte fertige Bild der Seite liegt über dem echten Dashboard, bis dieses „bereit“ meldet.
+     Das Bild läuft in einem abgeschotteten Rahmen ohne Skripte, die Decke darüber fängt jeden Tipp ab. */
+  #bild { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: none; z-index: 2; background: #0b1120;
+    opacity: 1; transition: opacity .22s ease; pointer-events: none; }
+  #bild.weg { opacity: 0; }
+  #bildDecke { position: fixed; inset: 0; display: none; z-index: 3; cursor: progress; -webkit-tap-highlight-color: transparent; }
+  #stand { position: fixed; z-index: 4; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: none;
+    max-width: calc(100% - 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: rgba(11, 17, 32, .82); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px;
+    padding: 5px 12px; font-size: 12.5px; line-height: 1.4; box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); pointer-events: none; }
+  #stand.alt { background: rgba(230, 159, 0, .95); color: #10203a; border-color: rgba(0, 0, 0, .2); font-weight: 700; }
+  #stand .punkt { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #56B4E9; margin-right: 7px; vertical-align: 1px;
+    animation: standPuls 1.1s ease-in-out infinite; }
+  #stand.alt .punkt { background: #10203a; }
+  @keyframes standPuls { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #stand .punkt { animation: none; } #bild { transition: none; } }
+  #gleich { position: fixed; z-index: 4; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: none;
+    background: #10203a; color: #f8fafc; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; padding: 9px 16px;
+    font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); pointer-events: none; }
 </style>
 </head>
 <body>
 
 <iframe id="rahmen" title="Dashboard" allow="clipboard-read; clipboard-write; fullscreen; web-share; microphone; autoplay; encrypted-media; picture-in-picture"></iframe>
+<!-- Sofortbild (seit v566): letzter Stand der Seite, nur zum Ansehen. sandbox ohne jede Erlaubnis: kein Skript, keine Eingabe, kein Formular. -->
+<iframe id="bild" title="Letzter Stand, wird aktualisiert" sandbox="" aria-hidden="true" tabindex="-1"></iframe>
+<div id="bildDecke" aria-hidden="true"></div>
+<div id="stand" role="status" aria-live="polite"></div>
+<div id="gleich" role="status">Gleich bereit …</div>
 
 <div class="mitte" id="einrichten" style="display: none;">
   <div class="karte">
@@ -130,6 +156,7 @@
   // Seit v460 auch die Einkaufsliste (einkauf/), Mircos Festlegung: jede eigene Seite bekommt eine eigene Adresse und ein eigenes Symbol.
   /* ORTE-ANFANG: Diese Zeile schreibt node pruefung/rahmen/symbole.js aus pruefung/rahmen/orte.js, nicht von Hand ändern. Seit v468 hat jede Seite des Dashboards einen eigenen Ordner. */
   var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' }, einkauf: { ordner: 'einkauf/', name: 'Einkauf' }, frag: { ordner: 'frag/', name: 'Fragen' }, wohnzimmer: { ordner: 'wohnzimmer/', name: 'Kommandozentrale' }, nachrichten: { ordner: 'nachrichten/', name: 'Nachrichten' }, geldverschiebung: { ordner: 'konten/', name: 'Konten' }, vermoegen: { ordner: 'vermoegen/', name: 'Vermögen' }, depots: { ordner: 'depots/', name: 'Depots' }, haushalt: { ordner: 'haushalt/', name: 'Haushalt' }, urlaub: { ordner: 'urlaub/', name: 'Urlaub' }, jahre: { ordner: 'jahre/', name: 'Jahre' }, arztrechnungen: { ordner: 'arztrechnungen/', name: 'Arzt' }, archive: { ordner: 'archiv/', name: 'Archiv' }, vertraege: { ordner: 'vertraege/', name: 'Verträge' }, steuer: { ordner: 'steuer/', name: 'Steuer' }, newsletter: { ordner: 'newsletter/', name: 'Newsletter' }, trading: { ordner: 'trading/', name: 'Trading' }, markt: { ordner: 'boerse/', name: 'Börse' }, krypto: { ordner: 'krypto/', name: 'Krypto' }, hauskonto: { ordner: 'hauskonto/', name: 'Hauskonto' }, energie: { ordner: 'energie/', name: 'Strom & Gas' }, zaehler: { ordner: 'zaehler/', name: 'Zähler' }, fahrzeuge: { ordner: 'auto/', name: 'Auto' }, vcds: { ordner: 'vcds/', name: 'VCDS' }, calendar: { ordner: 'termine/', name: 'Termine' }, tickets: { ordner: 'tickets/', name: 'Tickets' }, hoerspiele: { ordner: 'hoerspiele/', name: 'Hörspiele' }, medien: { ordner: 'radio/', name: 'Radio' }, privatnotizen: { ordner: 'notizen/', name: 'Notizen' }, links: { ordner: 'links/', name: 'Links' }, dokumente: { ordner: 'dokumente/', name: 'Dokumente' }, dokusuche: { ordner: 'dokusuche/', name: 'Doku-Suche' }, aufgaben: { ordner: 'aufgabenliste/', name: 'Aufgabenliste' }, tasks: { ordner: 'tasks/', name: 'Google Tasks' }, hilfe: { ordner: 'hilfe/', name: 'Hilfe' }, tagebuch: { ordner: 'tagebuch/', name: 'Tagebuch' }, wissen: { ordner: 'wissen/', name: 'Wissen' }, vokabeln: { ordner: 'vokabeln/', name: 'Vokabeln' }, redewendungen: { ordner: 'redewendungen/', name: 'Redewendungen' }, training: { ordner: 'training/', name: 'Training' }, essen: { ordner: 'essen/', name: 'Essen' }, gewicht: { ordner: 'gewicht/', name: 'Gewicht' }, rezepte: { ordner: 'rezepte/', name: 'Rezepte' } };
+  var BILDER = ['schnell', 'einkauf'];
   /* ORTE-ENDE */
   // Der Hauptordner: die Adresse ohne den Ordner einer Seite am Ende. Verglichen wird mit dem Schrägstrich davor, damit
   // „…/aufgabenliste/“ nicht für „…/liste/“ gehalten würde.
@@ -156,6 +183,11 @@
     einrichten.style.display = 'none';
     hilfe.style.display = 'none';
     rahmen.style.display = 'block';
+    // Seit v566: Messung beginnt. Beim ersten Öffnen zählt die Zeit ab dem Antippen (Start dieser Seite), danach ab dem Seitenwechsel.
+    messung = { tab: tab, start: ersteMessung ? 0 : performance.now(), da: -1, bild: -1, bereit: -1 };
+    ersteMessung = false;
+    seiteDa = false;
+    bildZeigen(tab);
     // rahmen=1 sagt dem Dashboard, dass es im Rahmen läuft.
     var wz = tab === 'wohnzimmer' ? wzLesen() : '';
     rahmen.src = adresse + '?rahmen=1' + (tab ? '&tab=' + encodeURIComponent(tab) : '') + (code ? '&code=' + encodeURIComponent(code) : '') + (wz ? '&wz=' + wz : '');
@@ -167,6 +199,7 @@
 
   function einrichtenZeigen(text) {
     clearTimeout(wecker);
+    bildWeg(false);
     rahmen.style.display = 'none'; rahmen.removeAttribute('src');
     hilfe.style.display = 'none';
     einrichten.style.display = 'flex';
@@ -185,7 +218,8 @@
   document.getElementById('adresse').addEventListener('keydown', function (e) { if (e.key === 'Enter') hinterlegen(this.value); });
   document.getElementById('direkt').addEventListener('click', function () { var a = lesen(); if (a) window.open(a, '_blank', 'noopener'); });
   document.getElementById('neuLaden').addEventListener('click', function () { var a = lesen(); if (a) zeigen(a, startTab()); });
-  document.getElementById('vergessen').addEventListener('click', function () { loeschen(); einrichtenZeigen(''); });
+  // Mit der Adresse gehen auch alle Sofortbilder dieses Geräts (seit v566).
+  document.getElementById('vergessen').addEventListener('click', function () { loeschen(); bilderVergessen(); einrichtenZeigen(''); });
   document.getElementById('hilfeZu').addEventListener('click', function () { hilfe.style.display = 'none'; });
 
   // Nachrichten aus dem Dashboard. Angenommen werden sie nur aus dem Rahmen selbst und nur von Googles Adressen.
@@ -196,11 +230,33 @@
     var tabOk = typeof d.tab === 'string' && /^[a-z-]{0,30}$/.test(d.tab);
     // „da“: Das Dashboard (oder seine Anmeldeseite) ist im Rahmen angekommen. Der Hinweis bleibt weg, und die Seite bekommt „ok“ zurück.
     // Erst mit diesem „ok“ schickt sie ihre Seitenwechsel hierher, statt das ganze Fenster zu laden.
+    // Seit v566 stehen im „ok“ auch die Seiten mit Sofortbild (bilder) und die schon gemerkten Gestaltungen (css).
     if (d.was === 'da') {
       clearTimeout(wecker); hilfe.style.display = 'none';
-      try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL }, e.origin); } catch (err) {}
+      seiteDa = true;
+      if (messung && messung.da < 0) messung.da = Math.round(performance.now() - messung.start);
+      try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL, bilder: BILDER, css: cssBekannt }, e.origin); } catch (err) {}
+      // Die Anmeldeseite heißt: Dieses Gerät ist gerade nicht angemeldet. Dann zeigt es auch keine alten Bilder mehr.
+      if (d.anmeldung === 1) { bilderVergessen(); bildWeg(false); }
+      else if (bildAn) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, 10000); }
       return;
     }
+    // Seit v566, Sofortbild. „bereit“: Die Seite ist fertig gezeichnet, das Bild weicht ihr. Die gemessene Zeit geht an die Seite zurück,
+    // die sie einmal an den Server meldet (Einstellungen, „Welche Seiten wie oft, wie schnell“).
+    if (d.was === 'bereit' && tabOk && ausUnseremRahmen(e.source)) {
+      clearTimeout(wecker); hilfe.style.display = 'none';
+      seiteDa = true;
+      bildWeg(true);
+      if (messung && messung.bereit < 0) {
+        messung.bereit = Math.round(performance.now() - messung.start);
+        try { e.source.postMessage({ dashboardRahmen: 1, was: 'zeit', tab: d.tab, ms: messung.bereit, bild: messung.bild }, e.origin); } catch (err) {}
+      }
+      return;
+    }
+    // „bild“: ein frisches Bild der Seite zum Merken. Nur für Seiten aus BILDER und nur aus dem eigenen Rahmen.
+    if (d.was === 'bild' && tabOk && BILDER.indexOf(d.tab) !== -1 && ausUnseremRahmen(e.source)) { bildMerken(d, e.source, e.origin); return; }
+    // „vergessen“: Notaus, alle Geräte abgemeldet oder neuer Zugangscode. Alle Bilder dieses Geräts weg.
+    if (d.was === 'vergessen') { bilderVergessen(); bildWeg(false); return; }
     // Seitenwechsel im Rahmen (Startseite, Aufgaben, Arbeit): Das Dashboard nennt nur den Namen der Seite, nie eine Adresse.
     // „code“ kommt von der Anmeldeseite: Dashboard mit dem eingetippten Code im Rahmen neu laden.
     if ((d.was === 'gehe' || d.was === 'code') && tabOk) {
@@ -225,6 +281,240 @@
     if (!ALS_APP) kennzeichnen(tab);
   }
 
+  /* ================= Sofortbild, seit v566 (24.11.2026) =================
+     Die Seiten des Dashboards schicken, wenn sie fertig gezeichnet sind, ein Bild ihres Inhalts (HTML ohne Skripte, dazu einmal
+     ihre Gestaltung). Hier wird je Seite (tab) das letzte Bild gemerkt und beim nächsten Öffnen sofort gezeigt, während das echte
+     Dashboard dahinter lädt. Meldet es „bereit“, blendet das Bild aus. Regeln:
+     - Nur zum Ansehen. Es läuft in einem Rahmen mit sandbox ohne jede Erlaubnis, darüber liegt eine Decke, die jeden Tipp abfängt.
+       Vor „da“ kommt nur der Hinweis „Gleich bereit“, danach weicht das Bild sofort der echten Seite. So wird nie etwas doppelt
+       oder auf einem alten Stand gebucht.
+     - Gespeichert in IndexedDB dieses Geräts, verschlüsselt mit AES-GCM. Der Schlüssel liegt nicht auslesbar daneben. Das schützt
+       die Dateien auf dem Gerät, nicht vor einem Skript derselben Herkunft (pippomirco.github.io): Darum darf es dort keine weiteren
+       Seiten mit Skripten geben (geprüft am 24.11.2026: es gibt nur das Repo dashboard).
+     - Es ist eine Anzeigekopie, nie ein Speicher des Dashboards. Bilder verfallen nach 14 Tagen ohne Öffnen und verschwinden ganz bei
+       „vergessen“ (Notaus, alle Geräte abmelden, neuer Code), bei der Anmeldeseite und bei „Adresse neu hinterlegen“.
+     - Welche Seiten ein Bild bekommen, steht in BILDER (aus pruefung/rahmen/orte.js, Merkmal bild). */
+  var bildRahmen = document.getElementById('bild');
+  var bildDecke = document.getElementById('bildDecke');
+  var standLeiste = document.getElementById('stand');
+  var gleichHinweis = document.getElementById('gleich');
+  var BILD_DB = 'dashboard_sofortbild', BILD_TAGE = 14, BILD_MAX = 1000000, CSS_MAX = 1500000;
+  var messung = null, ersteMessung = true, seiteDa = false;
+  var bildAn = false, bildLauf = 0, bildWecker = 0, gleichUhr = 0;
+  var cssBekannt = [];
+  var dbVersprechen = null, schluesselVersprechen = null;
+
+  /** Kommt die Nachricht aus dem Rahmen dieser Seite? Bei Google steckt die eigentliche Seite zwei Rahmen tief darin. */
+  function ausUnseremRahmen(quelle) {
+    try { var w = quelle; for (var i = 0; i < 5 && w; i++) { if (w === rahmen.contentWindow) return true; if (w === w.parent) break; w = w.parent; } } catch (e) {}
+    return false;
+  }
+
+  function db() {
+    if (dbVersprechen) return dbVersprechen;
+    dbVersprechen = new Promise(function (gut, schlecht) {
+      try {
+        if (!window.indexedDB || !window.crypto || !crypto.subtle) { schlecht(new Error('nicht da')); return; }
+        var r = indexedDB.open(BILD_DB, 1);
+        r.onupgradeneeded = function () {
+          var d = r.result;
+          if (!d.objectStoreNames.contains('bilder')) d.createObjectStore('bilder', { keyPath: 'tab' });
+          if (!d.objectStoreNames.contains('css')) d.createObjectStore('css', { keyPath: 'id' });
+          if (!d.objectStoreNames.contains('schluessel')) d.createObjectStore('schluessel');
+        };
+        r.onsuccess = function () { gut(r.result); };
+        r.onerror = function () { schlecht(r.error); };
+      } catch (e) { schlecht(e); }
+    });
+    dbVersprechen.catch(function () {});
+    return dbVersprechen;
+  }
+  /** Eine Anfrage an einen Speicher, als Versprechen. art: readonly oder readwrite, tun bekommt den Speicher. */
+  function speicher(name, art, tun) {
+    return db().then(function (d) {
+      return new Promise(function (gut, schlecht) {
+        var t = d.transaction(name, art), ergebnis;
+        var r = tun(t.objectStore(name));
+        if (r) r.onsuccess = function () { ergebnis = r.result; };
+        t.oncomplete = function () { gut(ergebnis); };
+        t.onerror = t.onabort = function () { schlecht(t.error); };
+      });
+    });
+  }
+  /** Der Schlüssel für AES-GCM. Er wird einmal erzeugt, ist nicht auslesbar (extractable false) und bleibt in IndexedDB. */
+  function schluessel() {
+    if (schluesselVersprechen) return schluesselVersprechen;
+    schluesselVersprechen = speicher('schluessel', 'readonly', function (s) { return s.get('aes'); }).then(function (k) {
+      if (k) return k;
+      return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']).then(function (neu) {
+        return speicher('schluessel', 'readwrite', function (s) { return s.put(neu, 'aes'); }).then(function () { return neu; });
+      });
+    });
+    schluesselVersprechen.catch(function () { schluesselVersprechen = null; });
+    return schluesselVersprechen;
+  }
+  function verschluesseln(wert) {
+    return schluessel().then(function (k) {
+      var iv = crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(wert))).then(function (daten) { return { iv: iv, daten: daten }; });
+    });
+  }
+  function entschluesseln(eintrag) {
+    return schluessel().then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: eintrag.iv }, k, eintrag.daten); })
+      .then(function (roh) { return JSON.parse(new TextDecoder().decode(roh)); });
+  }
+
+  /** Entfernt alles, was in einem Bild etwas tun könnte: Skripte, Rahmen, Einbettungen, on…-Attribute, javascript:-Adressen. */
+  function saeubernHtml(html) {
+    var doc = new DOMParser().parseFromString('<!doctype html><html><head></head><body>' + html + '</body></html>', 'text/html');
+    var weg = doc.body.querySelectorAll('script, iframe, frame, frameset, object, embed, applet, meta, base, link, noscript, template, style, portal');
+    for (var i = 0; i < weg.length; i++) weg[i].parentNode.removeChild(weg[i]);
+    var alle = doc.body.getElementsByTagName('*');
+    for (var j = 0; j < alle.length; j++) {
+      var el = alle[j];
+      for (var a = el.attributes.length - 1; a >= 0; a--) {
+        var n = el.attributes[a].name.toLowerCase(), v = el.attributes[a].value;
+        if (n.indexOf('on') === 0 || n === 'srcdoc' || n === 'autofocus' || n === 'contenteditable'
+          || (/^(href|src|action|formaction|xlink:href|poster|data|background|ping)$/.test(n) && /^\s*(javascript|vbscript|data:text\/html)/i.test(v))) el.removeAttribute(el.attributes[a].name);
+      }
+    }
+    return doc.body.innerHTML;
+  }
+  function saeubernAttr(liste) {
+    if (!Array.isArray(liste)) return [];
+    return liste.filter(function (a) { return Array.isArray(a) && typeof a[0] === 'string' && typeof a[1] === 'string' && /^(class|style|lang|dir|data-[a-z0-9-]{1,40})$/.test(a[0]) && a[1].length <= 4000; }).slice(0, 30);
+  }
+  function attrText(liste) {
+    return (liste || []).map(function (a) { return ' ' + a[0] + '="' + a[1].replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"'; }).join('');
+  }
+
+  /** Nimmt ein Bild der Seite entgegen, säubert, verschlüsselt und merkt es (höchstens eins je Seite, rund 1 MB). */
+  function bildMerken(d, quelle, herkunft) {
+    if (typeof d.html !== 'string' || d.html.length > BILD_MAX || typeof d.cssId !== 'string' || !/^[a-z0-9]{1,40}$/.test(d.cssId)) return;
+    var mitCss = typeof d.css === 'string' && d.css.length <= CSS_MAX;
+    if (!mitCss && cssBekannt.indexOf(d.cssId) === -1) {
+      try { quelle.postMessage({ dashboardRahmen: 1, was: 'css-bitte' }, herkunft); } catch (e) {}
+      return;
+    }
+    var jetzt = Date.now();
+    var inhalt = { html: saeubernHtml(d.html), cssId: d.cssId, htmlAttr: saeubernAttr(d.htmlAttr), bodyAttr: saeubernAttr(d.bodyAttr),
+      zeit: typeof d.zeit === 'number' && d.zeit > 0 && d.zeit <= jetzt + 60000 ? d.zeit : jetzt };
+    var schritte = Promise.resolve();
+    if (mitCss) {
+      var css = d.css.replace(/<\/(style)/gi, '<\\/$1');
+      schritte = verschluesseln(css).then(function (v) {
+        return speicher('css', 'readwrite', function (s) { return s.put({ id: d.cssId, iv: v.iv, daten: v.daten, zuletzt: jetzt }); });
+      }).then(function () { if (cssBekannt.indexOf(d.cssId) === -1) cssBekannt.push(d.cssId); });
+    }
+    schritte.then(function () { return verschluesseln(inhalt); }).then(function (v) {
+      return speicher('bilder', 'readwrite', function (s) { return s.put({ tab: d.tab, iv: v.iv, daten: v.daten, zuletzt: jetzt }); });
+    }).then(aufraeumen).catch(function () {});
+  }
+
+  /** Bilder, die 14 Tage nicht geöffnet wurden, und Gestaltungen, die kein Bild mehr braucht, fliegen raus. */
+  function aufraeumen() {
+    var grenze = Date.now() - BILD_TAGE * 24 * 3600 * 1000;
+    return speicher('bilder', 'readonly', function (s) { return s.getAll(); }).then(function (bilder) {
+      var alt = (bilder || []).filter(function (b) { return !(b.zuletzt >= grenze); }).map(function (b) { return b.tab; });
+      return Promise.all(alt.map(function (t) { return speicher('bilder', 'readwrite', function (s) { return s.delete(t); }); })).then(function () {
+        return Promise.all((bilder || []).filter(function (b) { return alt.indexOf(b.tab) === -1; }).map(function (b) {
+          return entschluesseln(b).then(function (x) { return x.cssId; }, function () { return ''; });
+        }));
+      });
+    }).then(function (gebraucht) {
+      return speicher('css', 'readonly', function (s) { return s.getAllKeys(); }).then(function (ids) {
+        var ueber = (ids || []).filter(function (id) { return gebraucht.indexOf(id) === -1; });
+        cssBekannt = (ids || []).filter(function (id) { return gebraucht.indexOf(id) !== -1; });
+        return Promise.all(ueber.map(function (id) { return speicher('css', 'readwrite', function (s) { return s.delete(id); }); }));
+      });
+    }).catch(function () {});
+  }
+
+  /** Löscht alle Bilder, alle Gestaltungen und den Schlüssel dieses Geräts. */
+  function bilderVergessen() {
+    cssBekannt = [];
+    schluesselVersprechen = null;
+    ['bilder', 'css', 'schluessel'].forEach(function (n) { speicher(n, 'readwrite', function (s) { return s.clear(); }).catch(function () {}); });
+  }
+
+  function standText(zeit, tab) {
+    var d = new Date(zeit), heute = new Date(), gestern = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate() - 1);
+    var uhr = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    var tag = d.toDateString() === heute.toDateString() ? '' : d.toDateString() === gestern.toDateString() ? 'gestern ' : ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '. ';
+    // Trading Journal: Kurse aus dem Bild sind alt. Das muss man sehen (nie alte und neue Stände mischen).
+    if (tab === 'trading') return 'Kurse von ' + tag + uhr + ', nicht aktuell. Wird aktualisiert …';
+    return 'Stand ' + tag + uhr + ', wird aktualisiert …';
+  }
+
+  /** Zeigt das gemerkte Bild der Seite sofort, falls es eins gibt. Das echte Dashboard lädt derweil dahinter. */
+  function bildZeigen(tab) {
+    var lauf = ++bildLauf;
+    bildWeg(false);
+    if (BILDER.indexOf(tab) === -1) return;
+    var eintrag;
+    speicher('bilder', 'readonly', function (s) { return s.get(tab); }).then(function (e) {
+      if (!e || lauf !== bildLauf) return null;
+      if (!(e.zuletzt >= Date.now() - BILD_TAGE * 24 * 3600 * 1000)) return null;
+      eintrag = e;
+      return entschluesseln(e);
+    }).then(function (inhalt) {
+      if (!inhalt || lauf !== bildLauf) return null;
+      return speicher('css', 'readonly', function (s) { return s.get(inhalt.cssId); }).then(function (c) {
+        return c ? entschluesseln(c).then(function (css) { return { inhalt: inhalt, css: css }; }) : null;
+      });
+    }).then(function (x) {
+      // Kam die echte Seite schon an (oder wurde inzwischen gewechselt), wird nichts mehr gezeigt.
+      if (!x || lauf !== bildLauf || (messung && messung.bereit >= 0)) return;
+      var extra = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;cursor:progress!important}'
+        + 'html,body{overflow:hidden!important}'
+        + (tab === 'trading' ? 'body{opacity:.42!important;filter:grayscale(.7)!important}' : '');
+      bildRahmen.onload = function () {
+        if (lauf !== bildLauf || !bildAn) return;
+        if (messung && messung.bild < 0) messung.bild = Math.round(performance.now() - messung.start);
+      };
+      bildRahmen.srcdoc = '<!doctype html><html' + attrText(x.inhalt.htmlAttr) + '><head><meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>' + x.css + '</style><style>' + extra + '</style></head>'
+        + '<body' + attrText(x.inhalt.bodyAttr) + '>' + x.inhalt.html + '</body></html>';
+      bildRahmen.classList.remove('weg');
+      bildRahmen.style.display = 'block';
+      bildDecke.style.display = 'block';
+      standLeiste.innerHTML = '<span class="punkt"></span>';
+      standLeiste.appendChild(document.createTextNode(standText(x.inhalt.zeit, tab)));
+      standLeiste.className = tab === 'trading' ? 'alt' : '';
+      standLeiste.style.display = 'block';
+      bildAn = true;
+      // Öffnen zählt als Benutzung: Die 14 Tage beginnen neu.
+      eintrag.zuletzt = Date.now();
+      speicher('bilder', 'readwrite', function (s) { return s.put(eintrag); }).catch(function () {});
+      // Ist die Seite schon da, meldet aber kein „bereit“ (ältere Fassung), weicht das Bild nach zehn Sekunden trotzdem.
+      if (seiteDa) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, 10000); }
+    }).catch(function () {});
+  }
+
+  /** Nimmt das Bild weg, sanft (überblenden) oder sofort. */
+  function bildWeg(sanft) {
+    clearTimeout(bildWecker);
+    gleichHinweis.style.display = 'none';
+    if (!bildAn && bildRahmen.style.display !== 'block') return;
+    bildAn = false;
+    bildDecke.style.display = 'none';
+    standLeiste.style.display = 'none';
+    var lauf = bildLauf;
+    var fertig = function () { if (bildAn || lauf !== bildLauf) return; bildRahmen.style.display = 'none'; bildRahmen.removeAttribute('srcdoc'); bildRahmen.classList.remove('weg'); };
+    if (sanft) { bildRahmen.classList.add('weg'); setTimeout(fertig, 260); } else fertig();
+  }
+
+  // Ein Tipp auf das Bild: Ist die echte Seite schon da, weicht das Bild sofort. Sonst nur der Hinweis „Gleich bereit“.
+  bildDecke.addEventListener('pointerdown', function (ev) {
+    ev.preventDefault();
+    if (seiteDa) { bildWeg(true); return; }
+    gleichHinweis.style.display = 'block';
+    clearTimeout(gleichUhr);
+    gleichUhr = setTimeout(function () { gleichHinweis.style.display = 'none'; }, 1600);
+  });
+
+  aufraeumen();
+
   // Einmaliges Einrichten per Link: …/#https://script.google.com/macros/s/…/exec
   // Der Teil hinter dem # geht nie an GitHub und wird danach sofort aus der Adresszeile genommen.
   var hashRoh = '';
@@ -240,6 +530,15 @@
   var adresse = saeubern(lesen());
   // Die Adresse oben bekommt gleich ihre feste Form (…/dashboard/?tab=schnell wird zu …/dashboard/aufgaben/).
   if (adresse) { var los = startTab(); ortMerken(los); zeigen(adresse, los); } else { if (!ALS_APP) kennzeichnen(startTab()); einrichtenZeigen(''); }
+
+  /* Seit v566: Service Worker (sw.js im Hauptordner). Er legt diese Seite, die manifest-Dateien und die Symbole in den
+     Zwischenspeicher des Geräts, die Rahmenseite kommt dann ohne Netz in Millisekunden. Eine neue Fassung holt er im Hintergrund
+     und nimmt sie beim nächsten Start. Angemeldet wird erst nach dem Laden, damit er dem Dashboard nichts wegnimmt. */
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', function () {
+      setTimeout(function () { try { navigator.serviceWorker.register(WURZEL + 'sw.js', { scope: WURZEL }).catch(function () {}); } catch (e) {} }, 1500);
+    });
+  }
 })();
 </script>
 </body>
