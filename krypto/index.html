@@ -238,7 +238,7 @@
       try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL, bilder: BILDER, css: cssBekannt }, e.origin); } catch (err) {}
       // Die Anmeldeseite heißt: Dieses Gerät ist gerade nicht angemeldet. Dann zeigt es auch keine alten Bilder mehr.
       if (d.anmeldung === 1) { bilderVergessen(); bildWeg(false); }
-      else if (bildAn) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, 10000); }
+      else if (bildAn) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, BILD_NACH_DA); }
       return;
     }
     // Seit v566, Sofortbild. „bereit“: Die Seite ist fertig gezeichnet, das Bild weicht ihr. Die gemessene Zeit geht an die Seite zurück,
@@ -301,6 +301,9 @@
   var BILD_DB = 'dashboard_sofortbild', BILD_TAGE = 14, BILD_MAX = 1000000, CSS_MAX = 1500000;
   var messung = null, ersteMessung = true, seiteDa = false;
   var bildAn = false, bildLauf = 0, bildWecker = 0, gleichUhr = 0;
+  // Seit v568: Kommt nach „da“ so lange kein „bereit“, weicht das Bild trotzdem (vorher 10 Sekunden, am 24.11.2026 stand das Bild so
+  // auf der Startseite rund 17 Sekunden). Die echte Seite ist dann schon bedienbar und lädt höchstens noch Zahlen nach.
+  var BILD_NACH_DA = 3000;
   var cssBekannt = [];
   var dbVersprechen = null, schluesselVersprechen = null;
 
@@ -486,8 +489,8 @@
       // Öffnen zählt als Benutzung: Die 14 Tage beginnen neu.
       eintrag.zuletzt = Date.now();
       speicher('bilder', 'readwrite', function (s) { return s.put(eintrag); }).catch(function () {});
-      // Ist die Seite schon da, meldet aber kein „bereit“ (ältere Fassung), weicht das Bild nach zehn Sekunden trotzdem.
-      if (seiteDa) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, 10000); }
+      // Ist die Seite schon da, meldet aber kein „bereit“ (ältere Fassung, Daten hängen), weicht das Bild nach BILD_NACH_DA trotzdem.
+      if (seiteDa) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, BILD_NACH_DA); }
     }).catch(function () {});
   }
 

@@ -8,7 +8,7 @@
    STAND setzt pruefung/rahmen/verteilen.js beim Verteilen (Prüfsumme über Seite und diese Datei). Ändert sich etwas, hat der
    Zwischenspeicher einen neuen Namen, der alte wird beim Wechsel gelöscht. Quelle ist rahmen/sw.js im privaten Repo. */
 'use strict';
-var STAND = '078c84fb8e53';
+var STAND = 'ba95de6f5119';
 var SPEICHER = 'rahmen-' + STAND;
 var BASIS = new URL('./', self.location).pathname;          // etwa /dashboard/
 var SEITE = new URL('./', self.location).href;               // unter diesem Schlüssel liegt die eine index.html
