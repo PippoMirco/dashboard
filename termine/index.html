@@ -45,11 +45,17 @@
   #hilfe button.leise { background: transparent; color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .25); }
   #hilfe { z-index: 5; }
   /* Sofortbild, seit v566: das letzte fertige Bild der Seite liegt über dem echten Dashboard, bis dieses „bereit“ meldet.
-     Das Bild läuft in einem abgeschotteten Rahmen ohne Skripte, die Decke darüber fängt jeden Tipp ab. */
-  #bild { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: none; z-index: 2; background: #0b1120;
-    opacity: 1; transition: opacity .22s ease; pointer-events: none; }
-  #bild.weg { opacity: 0; }
-  #bildDecke { position: fixed; inset: 0; display: none; z-index: 3; cursor: progress; -webkit-tap-highlight-color: transparent; }
+     Das Bild läuft in einem abgeschotteten Rahmen ohne Skripte. Seit v573 liegt es in einer scrollbaren Fläche (bildDecke), so hoch
+     wie sein Inhalt, und fängt dort jeden Tipp ab. Fest stehende Leisten zeigt eine zweite, durchsichtige Ebene (bildFest) darüber,
+     damit sie beim Scrollen an ihrem Platz bleiben. */
+  #bildDecke { position: fixed; inset: 0; display: none; z-index: 2; cursor: progress; -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; background: #0b1120;
+    opacity: 1; transition: opacity .22s ease; }
+  #bildDecke.weg { opacity: 0; }
+  #bild { display: none; width: 100%; height: 100%; border: 0; pointer-events: none; background: #0b1120; vertical-align: top; }
+  #bildFest { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; display: none; z-index: 3; pointer-events: none;
+    background: transparent; color-scheme: normal; opacity: 1; transition: opacity .22s ease; }
+  #bildFest.weg { opacity: 0; }
   #stand { position: fixed; z-index: 4; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: none;
     max-width: calc(100% - 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     background: rgba(11, 17, 32, .82); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px;
@@ -60,7 +66,7 @@
     animation: standPuls 1.1s ease-in-out infinite; }
   #stand.alt .punkt { background: #10203a; }
   @keyframes standPuls { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { #stand .punkt { animation: none; } #bild { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { #stand .punkt { animation: none; } #bildDecke, #bildFest { transition: none; } }
   #gleich { position: fixed; z-index: 4; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: none;
     background: #10203a; color: #f8fafc; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; padding: 9px 16px;
     font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); pointer-events: none; }
@@ -70,8 +76,8 @@
 
 <iframe id="rahmen" title="Dashboard" allow="clipboard-read; clipboard-write; fullscreen; web-share; microphone; autoplay; encrypted-media; picture-in-picture"></iframe>
 <!-- Sofortbild (seit v566): letzter Stand der Seite, nur zum Ansehen. sandbox ohne jede Erlaubnis: kein Skript, keine Eingabe, kein Formular. -->
-<iframe id="bild" title="Letzter Stand, wird aktualisiert" sandbox="" aria-hidden="true" tabindex="-1"></iframe>
-<div id="bildDecke" aria-hidden="true"></div>
+<div id="bildDecke" aria-hidden="true"><iframe id="bild" title="Letzter Stand, wird aktualisiert" sandbox="" aria-hidden="true" tabindex="-1"></iframe></div>
+<iframe id="bildFest" title="Feste Leisten des letzten Stands" sandbox="" aria-hidden="true" tabindex="-1"></iframe>
 <div id="stand" role="status" aria-live="polite"></div>
 <div id="gleich" role="status">Gleich bereit …</div>
 
@@ -286,7 +292,8 @@
      Die Seiten des Dashboards schicken, wenn sie fertig gezeichnet sind, ein Bild ihres Inhalts (HTML ohne Skripte, dazu einmal
      ihre Gestaltung). Hier wird je Seite (tab) das letzte Bild gemerkt und beim nächsten Öffnen sofort gezeigt, während das echte
      Dashboard dahinter lädt. Meldet es „bereit“, blendet das Bild aus. Regeln:
-     - Nur zum Ansehen. Es läuft in einem Rahmen mit sandbox ohne jede Erlaubnis, darüber liegt eine Decke, die jeden Tipp abfängt.
+     - Nur zum Ansehen. Es läuft in einem Rahmen mit sandbox ohne jede Erlaubnis (die festen Leisten in einem zweiten, genauso
+       abgeschotteten), in einer Fläche, die jeden Tipp abfängt und sich seit v573 scrollen lässt wie die echte Seite.
        Vor „da“ kommt nur der Hinweis „Gleich bereit“, danach weicht das Bild sofort der echten Seite, und ein Knopf, der nur etwas
        öffnet, wird dort gedrückt (seit v571). So wird nie etwas doppelt oder auf einem alten Stand gebucht.
      - Gespeichert in IndexedDB dieses Geräts, verschlüsselt mit AES-GCM. Der Schlüssel liegt nicht auslesbar daneben. Das schützt
@@ -297,6 +304,12 @@
      - Welche Seiten ein Bild bekommen, steht in BILDER (aus pruefung/rahmen/orte.js, Merkmal bild). */
   var bildRahmen = document.getElementById('bild');
   var bildDecke = document.getElementById('bildDecke');
+  var bildFest = document.getElementById('bildFest');
+  // Ebene für die festen Leisten (seit v573): nur sie sind zu sehen, alles andere unsichtbar und der Grund durchsichtig.
+  var FEST_CSS = 'html,body{background:transparent!important;background-image:none!important}'
+    + 'html::before,html::after,body::before,body::after{display:none!important}:root{color-scheme:normal!important}'
+    + 'body *{visibility:hidden!important}[data-bild-fest],[data-bild-fest] *{visibility:visible!important}'
+    + '[data-bild-fest][data-bild-weg],[data-bild-fest] [data-bild-weg],[data-bild-fest] [data-bild-weg] *{visibility:hidden!important}';
   var standLeiste = document.getElementById('stand');
   var gleichHinweis = document.getElementById('gleich');
   var BILD_DB = 'dashboard_sofortbild', BILD_TAGE = 14, BILD_MAX = 1000000, CSS_MAX = 1500000;
@@ -404,7 +417,8 @@
     }
     var jetzt = Date.now();
     var inhalt = { html: saeubernHtml(d.html), cssId: d.cssId, htmlAttr: saeubernAttr(d.htmlAttr), bodyAttr: saeubernAttr(d.bodyAttr),
-      zeit: typeof d.zeit === 'number' && d.zeit > 0 && d.zeit <= jetzt + 60000 ? d.zeit : jetzt };
+      zeit: typeof d.zeit === 'number' && d.zeit > 0 && d.zeit <= jetzt + 60000 ? d.zeit : jetzt,
+      hoehe: typeof d.hoehe === 'number' && d.hoehe > 0 && d.hoehe < 20000 ? Math.round(d.hoehe) : 0 };
     var schritte = Promise.resolve();
     if (mitCss) {
       var css = d.css.replace(/<\/(style)/gi, '<\\/$1');
@@ -478,12 +492,27 @@
         if (lauf !== bildLauf || !bildAn) return;
         if (messung && messung.bild < 0) messung.bild = Math.round(performance.now() - messung.start);
       };
-      bildRahmen.srcdoc = '<!doctype html><html' + attrText(x.inhalt.htmlAttr) + '><head><meta charset="utf-8">'
-        + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>' + x.css + '</style><style>' + extra + '</style></head>'
-        + '<body' + attrText(x.inhalt.bodyAttr) + '>' + x.inhalt.html + '</body></html>';
-      bildRahmen.classList.remove('weg');
+      var kopf = '<!doctype html><html' + attrText(x.inhalt.htmlAttr) + '><head><meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>' + x.css + '</style><style>' + extra;
+      var rumpf = '</style></head><body' + attrText(x.inhalt.bodyAttr) + '>' + x.inhalt.html + '</body></html>';
+      // Seit v573 scrollbar: Ist der Inhalt höher als der Bildschirm, wird der Rahmen so hoch wie er, und die festen Leisten kommen
+      // in die Ebene darüber (im hohen Rahmen stünde eine Leiste „unten“ sonst erst ganz unten). Ältere Bilder ohne hoehe wie bisher.
+      var hoehe = Number(x.inhalt.hoehe) || 0, rollen = hoehe > window.innerHeight + 4;
+      bildRahmen.srcdoc = kopf + (rollen ? '[data-bild-fest]{display:none!important}' : '') + rumpf;
+      bildRahmen.style.height = rollen ? hoehe + 'px' : '100%';
       bildRahmen.style.display = 'block';
+      bildDecke.classList.remove('weg');
+      bildDecke.style.pointerEvents = '';
       bildDecke.style.display = 'block';
+      bildDecke.scrollTop = 0;
+      if (rollen) {
+        bildFest.srcdoc = kopf + FEST_CSS + rumpf;
+        bildFest.classList.remove('weg');
+        bildFest.style.display = 'block';
+        // Am PC nimmt der Rollbalken rechts Platz weg, die festen Leisten der echten Seite stehen links davon.
+        var balken = bildDecke.offsetWidth - bildDecke.clientWidth;
+        bildFest.style.width = balken > 0 ? 'calc(100% - ' + balken + 'px)' : '100%';
+      }
       standLeiste.innerHTML = '<span class="punkt"></span>';
       standLeiste.appendChild(document.createTextNode(standText(x.inhalt.zeit, tab)));
       standLeiste.className = tab === 'trading' ? 'alt' : '';
@@ -502,35 +531,49 @@
     clearTimeout(bildWecker);
     gleichHinweis.style.display = 'none';
     if (!bildAn && bildRahmen.style.display !== 'block') return;
+    // Seit v573: Wurde im Bild gescrollt, übernimmt die echte Seite an derselben Stelle („rolle“).
+    var y = Math.round(bildDecke.scrollTop);
+    if (bildAn && y > 0 && seiteQuelle) { try { seiteQuelle.postMessage({ dashboardRahmen: 1, was: 'rolle', y: y }, seiteHerkunft); } catch (e) {} }
     bildAn = false;
-    bildDecke.style.display = 'none';
+    bildDecke.style.pointerEvents = 'none';
     standLeiste.style.display = 'none';
     var lauf = bildLauf;
-    var fertig = function () { if (bildAn || lauf !== bildLauf) return; bildRahmen.style.display = 'none'; bildRahmen.removeAttribute('srcdoc'); bildRahmen.classList.remove('weg'); };
-    if (sanft) { bildRahmen.classList.add('weg'); setTimeout(fertig, 260); } else fertig();
+    var fertig = function () {
+      if (bildAn || lauf !== bildLauf) return;
+      bildDecke.style.display = 'none'; bildDecke.style.pointerEvents = ''; bildDecke.classList.remove('weg'); bildDecke.scrollTop = 0;
+      bildRahmen.style.display = 'none'; bildRahmen.removeAttribute('srcdoc');
+      bildFest.style.display = 'none'; bildFest.removeAttribute('srcdoc'); bildFest.classList.remove('weg');
+    };
+    if (sanft) { bildDecke.classList.add('weg'); bildFest.classList.add('weg'); setTimeout(fertig, 260); } else fertig();
   }
 
-  // Ein Tipp auf das Bild: Vor „da“ nur der Hinweis „Gleich bereit“. Ist die echte Seite schon da, weicht das Bild beim Loslassen
-  // sofort, und seit v571 geht die Stelle des Tipps an die Seite („tipp“). Sie drückt dort den Knopf, wenn er nur etwas öffnet
-  // (etwa „Privat“), siehe rahmenTippWeiter in Index.html. Wer wischt statt tippt (mehr als 12 Pixel), nimmt nur das Bild weg.
+  // Wischen scrollt im Bild wie auf der echten Seite (seit v573, Mircos Wunsch: es soll sich wie eine App anfühlen, auch mit älterem
+  // Stand). Ein Tipp (weniger als 12 Pixel Bewegung): Vor „da“ nur der Hinweis „Gleich bereit“. Ist die echte Seite schon da, weicht
+  // das Bild sofort, und seit v571 geht die Stelle des Tipps an die Seite („tipp“, mit der Scrollhöhe sy). Sie scrollt an dieselbe
+  // Stelle und drückt dort den Knopf, wenn er nur etwas öffnet (etwa „Privat“), siehe rahmenTippWeiter in Index.html.
   bildDecke.addEventListener('pointerdown', function (ev) {
-    ev.preventDefault();
-    if (seiteDa) { tippStart = { x: ev.clientX, y: ev.clientY }; return; }
-    gleichHinweis.style.display = 'block';
-    clearTimeout(gleichUhr);
-    gleichUhr = setTimeout(function () { gleichHinweis.style.display = 'none'; }, 1600);
+    if (ev.button > 0) return;
+    tippStart = { x: ev.clientX, y: ev.clientY };
   });
   bildDecke.addEventListener('pointermove', function (ev) {
-    if (tippStart && Math.abs(ev.clientX - tippStart.x) + Math.abs(ev.clientY - tippStart.y) > 12) { tippStart = null; bildWeg(true); }
+    if (tippStart && Math.abs(ev.clientX - tippStart.x) + Math.abs(ev.clientY - tippStart.y) > 12) tippStart = null;
   });
-  bildDecke.addEventListener('pointerup', function (ev) {
+  // Der Browser übernimmt das Wischen zum Scrollen: kein Tipp.
+  bildDecke.addEventListener('pointercancel', function () { tippStart = null; });
+  bildDecke.addEventListener('pointerup', function () {
     var t = tippStart;
     tippStart = null;
-    if (!t || !seiteDa) return;
+    if (!t) return;
+    if (!seiteDa) {
+      gleichHinweis.style.display = 'block';
+      clearTimeout(gleichUhr);
+      gleichUhr = setTimeout(function () { gleichHinweis.style.display = 'none'; }, 1600);
+      return;
+    }
+    var sy = Math.round(bildDecke.scrollTop);
     bildWeg(false);
-    if (seiteQuelle) { try { seiteQuelle.postMessage({ dashboardRahmen: 1, was: 'tipp', x: t.x, y: t.y, w: window.innerWidth, h: window.innerHeight }, seiteHerkunft); } catch (err) {} }
+    if (seiteQuelle) { try { seiteQuelle.postMessage({ dashboardRahmen: 1, was: 'tipp', x: t.x, y: t.y, sy: sy, w: window.innerWidth, h: window.innerHeight }, seiteHerkunft); } catch (err) {} }
   });
-  bildDecke.addEventListener('pointercancel', function () { if (tippStart) { tippStart = null; bildWeg(true); } });
 
   aufraeumen();
 
