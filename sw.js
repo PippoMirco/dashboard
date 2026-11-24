@@ -8,7 +8,7 @@
    STAND setzt pruefung/rahmen/verteilen.js beim Verteilen (Prüfsumme über Seite und diese Datei). Ändert sich etwas, hat der
    Zwischenspeicher einen neuen Namen, der alte wird beim Wechsel gelöscht. Quelle ist rahmen/sw.js im privaten Repo. */
 'use strict';
-var STAND = '1336fb9cd757';
+var STAND = 'a26426e2c7c9';
 var SPEICHER = 'rahmen-' + STAND;
 var BASIS = new URL('./', self.location).pathname;          // etwa /dashboard/
 var SEITE = new URL('./', self.location).href;               // unter diesem Schlüssel liegt die eine index.html
@@ -37,14 +37,28 @@ self.addEventListener('fetch', function (e) {
   if (istSeite && !/\/(index\.html)?$/.test(url.pathname)) return;
   if (!istSeite && !/\.(webmanifest|png)$/.test(url.pathname)) return;
   var schluessel = istSeite ? SEITE : url.origin + url.pathname;
+  /* Notausgang seit v575: Mit ?frisch=1 in der Adresse kommt die Seite immer frisch von GitHub, am Zwischenspeicher dieses Geräts
+     und an dem des Browsers vorbei, und ersetzt die gemerkte Fassung. Gedacht für den Fall, dass eine alte Fassung hängt.
+     Der Knopf „Rahmenseite neu holen“ in der Hilfeleiste der Rahmenseite nimmt denselben Weg. */
+  var notausgang = istSeite && /[?&]frisch=/.test(url.search);
+  /* Seit v575 wird beim Nachsehen immer bei GitHub nachgefragt (no-cache), nicht mehr der Zwischenspeicher des Browsers geglaubt
+     (GitHub erlaubt ihm zehn Minuten). So liegt eine neue Fassung sicher nach dem ersten Start bereit und ist beim zweiten da.
+     Leitet GitHub um, wird die Anfrage unverändert durchgereicht, eine umgeleitete Antwort darf nicht für einen Seitenaufruf stehen. */
+  var holen = function () {
+    return fetch(anfrage.url, { cache: notausgang ? 'reload' : 'no-cache', credentials: 'same-origin' })
+      .then(function (antwort) { return antwort && antwort.redirected ? fetch(anfrage) : antwort; });
+  };
   e.respondWith(caches.open(SPEICHER).then(function (c) {
-    return c.match(schluessel).then(function (alt) {
-      var frisch = fetch(anfrage).then(function (antwort) {
+    return (notausgang ? Promise.resolve(undefined) : c.match(schluessel)).then(function (alt) {
+      var frisch = holen().then(function (antwort) {
         if (antwort && antwort.ok && antwort.type === 'basic' && !antwort.redirected) c.put(schluessel, antwort.clone()).catch(function () {});
         return antwort;
       });
       if (alt) { e.waitUntil(frisch.catch(function () {})); return alt; }
       return frisch;
     });
+  }).catch(function () {
+    // Klemmt der Zwischenspeicher selbst (Speicher voll, Browser räumt gerade auf), geht die Anfrage wie ohne Worker ans Netz.
+    return fetch(anfrage);
   }));
 });

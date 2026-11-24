@@ -24,7 +24,12 @@
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; background: #0b1120; color: #f8fafc;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  #rahmen { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: none; background: #0b1120; }
+  /* Seiten des Dashboards. Seit v575 gibt es mehrere Rahmen: Wer von der Schnellseite zur Startseite wechselt, lässt die alte Seite
+     wach im Hintergrund liegen (unsichtbar), der Weg zurück geht dann ohne Neuladen. Die sichtbare Seite hat die Klasse vorn. */
+  .seite { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #0b1120; z-index: 0; visibility: hidden; }
+  .seite.vorn { z-index: 1; visibility: visible; }
+  /* Die Seite, die gerade verlassen wird, bleibt noch einen Augenblick unter der neuen stehen, damit beim Tausch nichts aufblitzt. */
+  .seite.geht { visibility: visible; }
   .mitte { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .karte { width: 100%; max-width: 440px; background: rgba(23, 32, 54, .92); border: 1px solid rgba(255, 255, 255, .1);
     border-radius: 18px; padding: 28px 24px; }
@@ -37,49 +42,37 @@
     background: #8ab4f8; color: #10203a; width: 100%; }
   .meldung { font-size: 13.5px; color: #fbd38d; margin: 0 0 12px; display: none; }
   /* Kleine Leiste, falls das Dashboard im Rahmen nicht erscheint. Sie kommt erst nach einigen Sekunden. */
-  #hilfe { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); display: none; z-index: 2;
+  #hilfe { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); display: none; z-index: 5;
     background: rgba(23, 32, 54, .96); border: 1px solid rgba(255, 255, 255, .16); border-radius: 14px; padding: 12px 14px;
     font-size: 13.5px; line-height: 1.5; color: #e2e8f0; }
   #hilfe .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   #hilfe button { width: auto; font-size: 13.5px; padding: 8px 12px; }
   #hilfe button.leise { background: transparent; color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .25); }
-  #hilfe { z-index: 5; }
   /* Sofortbild, seit v566: das letzte fertige Bild der Seite liegt über dem echten Dashboard, bis dieses „bereit“ meldet.
-     Das Bild läuft in einem abgeschotteten Rahmen ohne Skripte. Seit v573 liegt es in einer scrollbaren Fläche (bildDecke), so hoch
-     wie sein Inhalt, und fängt dort jeden Tipp ab. Fest stehende Leisten zeigt eine zweite, durchsichtige Ebene (bildFest) darüber,
-     damit sie beim Scrollen an ihrem Platz bleiben. */
-  #bildDecke { position: fixed; inset: 0; display: none; z-index: 2; cursor: progress; -webkit-tap-highlight-color: transparent;
-    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; background: #0b1120;
+     Seit v575 lässt es sich scrollen wie die echte Seite. Es läuft in einem Rahmen ohne Skripte, sein Inhalt ist stillgelegt
+     (inert), es gibt keinen Wartezeiger und keinen Ladekreis mehr, nur die kleine Zeile oben sagt, dass aktualisiert wird. */
+  #bild { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: none; z-index: 2; background: #0b1120;
     opacity: 1; transition: opacity .22s ease; }
-  #bildDecke.weg { opacity: 0; }
-  #bild { display: none; width: 100%; height: 100%; border: 0; pointer-events: none; background: #0b1120; vertical-align: top; }
-  #bildFest { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; display: none; z-index: 3; pointer-events: none;
-    background: transparent; color-scheme: normal; opacity: 1; transition: opacity .22s ease; }
-  #bildFest.weg { opacity: 0; }
+  #bild.weg { opacity: 0; pointer-events: none; }
   #stand { position: fixed; z-index: 4; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: none;
     max-width: calc(100% - 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     background: rgba(11, 17, 32, .82); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px;
     padding: 5px 12px; font-size: 12.5px; line-height: 1.4; box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); pointer-events: none; }
   #stand.alt { background: rgba(230, 159, 0, .95); color: #10203a; border-color: rgba(0, 0, 0, .2); font-weight: 700; }
-  #stand .punkt { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #56B4E9; margin-right: 7px; vertical-align: 1px;
-    animation: standPuls 1.1s ease-in-out infinite; }
+  #stand .punkt { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #56B4E9; margin-right: 7px; vertical-align: 1px; }
   #stand.alt .punkt { background: #10203a; }
-  @keyframes standPuls { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { #stand .punkt { animation: none; } #bildDecke, #bildFest { transition: none; } }
-  #gleich { position: fixed; z-index: 4; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: none;
-    background: #10203a; color: #f8fafc; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; padding: 9px 16px;
-    font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { #bild { transition: none; } }
 </style>
 </head>
 <body>
 
-<iframe id="rahmen" title="Dashboard" allow="clipboard-read; clipboard-write; fullscreen; web-share; microphone; autoplay; encrypted-media; picture-in-picture"></iframe>
-<!-- Sofortbild (seit v566): letzter Stand der Seite, nur zum Ansehen. sandbox ohne jede Erlaubnis: kein Skript, keine Eingabe, kein Formular. -->
-<div id="bildDecke" aria-hidden="true"><iframe id="bild" title="Letzter Stand, wird aktualisiert" sandbox="" aria-hidden="true" tabindex="-1"></iframe></div>
-<iframe id="bildFest" title="Feste Leisten des letzten Stands" sandbox="" aria-hidden="true" tabindex="-1"></iframe>
+<!-- Die Seiten des Dashboards hängt das Skript unten als eigene Rahmen ein (Klasse seite, die sichtbare hat die Kennung rahmen). -->
+<!-- Sofortbild (seit v566): letzter Stand der Seite, nur zum Ansehen und seit v575 zum Scrollen. sandbox ohne allow-scripts: Im Bild
+     läuft nie ein Skript, es gibt keine Formulare, keine neuen Fenster. allow-same-origin ist nur dazu da, dass diese Seite die
+     Scrollposition lesen und einen Tipp erkennen kann. Der Inhalt selbst ist stillgelegt (inert): keine Eingabe, kein Link. -->
+<iframe id="bild" title="Letzter Stand, wird aktualisiert" sandbox="allow-same-origin" tabindex="-1"></iframe>
 <div id="stand" role="status" aria-live="polite"></div>
-<div id="gleich" role="status">Gleich bereit …</div>
 
 <div class="mitte" id="einrichten" style="display: none;">
   <div class="karte">
@@ -103,6 +96,8 @@
             title="Lädt das Dashboard im Rahmen noch einmal. Es wird nichts geändert.">Noch einmal versuchen</button>
     <button type="button" class="leise" id="vergessen"
             title="Löscht die auf diesem Gerät hinterlegte Adresse, danach erscheint wieder das Eingabefeld. Am Dashboard selbst ändert sich nichts.">Adresse neu hinterlegen</button>
+    <button type="button" class="leise" id="frisch"
+            title="Holt diese Rahmenseite frisch von GitHub und leert ihren Zwischenspeicher auf diesem Gerät, falls eine alte Fassung hängt. Adresse und Dashboard bleiben, wie sie sind.">Rahmenseite neu holen</button>
     <button type="button" class="leise" id="hilfeZu" aria-label="Hinweis schließen"
             title="Blendet diesen Hinweis aus. Es wird nichts geändert.">✕</button>
   </div>
@@ -134,7 +129,6 @@
     return MUSTER.test(t) ? t : '';
   }
 
-  var rahmen = document.getElementById('rahmen');
   var einrichten = document.getElementById('einrichten');
   var hilfe = document.getElementById('hilfe');
   var wecker = 0;
@@ -163,6 +157,7 @@
   /* ORTE-ANFANG: Diese Zeile schreibt node pruefung/rahmen/symbole.js aus pruefung/rahmen/orte.js, nicht von Hand ändern. Seit v468 hat jede Seite des Dashboards einen eigenen Ordner. */
   var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' }, einkauf: { ordner: 'einkauf/', name: 'Einkauf' }, frag: { ordner: 'frag/', name: 'Fragen' }, wohnzimmer: { ordner: 'wohnzimmer/', name: 'Kommandozentrale' }, nachrichten: { ordner: 'nachrichten/', name: 'Nachrichten' }, geldverschiebung: { ordner: 'konten/', name: 'Konten' }, vermoegen: { ordner: 'vermoegen/', name: 'Vermögen' }, depots: { ordner: 'depots/', name: 'Depots' }, haushalt: { ordner: 'haushalt/', name: 'Haushalt' }, urlaub: { ordner: 'urlaub/', name: 'Urlaub' }, jahre: { ordner: 'jahre/', name: 'Jahre' }, arztrechnungen: { ordner: 'arztrechnungen/', name: 'Arzt' }, archive: { ordner: 'archiv/', name: 'Archiv' }, vertraege: { ordner: 'vertraege/', name: 'Verträge' }, steuer: { ordner: 'steuer/', name: 'Steuer' }, newsletter: { ordner: 'newsletter/', name: 'Newsletter' }, trading: { ordner: 'trading/', name: 'Trading' }, markt: { ordner: 'boerse/', name: 'Börse' }, krypto: { ordner: 'krypto/', name: 'Krypto' }, hauskonto: { ordner: 'hauskonto/', name: 'Hauskonto' }, energie: { ordner: 'energie/', name: 'Strom & Gas' }, zaehler: { ordner: 'zaehler/', name: 'Zähler' }, fahrzeuge: { ordner: 'auto/', name: 'Auto' }, vcds: { ordner: 'vcds/', name: 'VCDS' }, calendar: { ordner: 'termine/', name: 'Termine' }, tickets: { ordner: 'tickets/', name: 'Tickets' }, hoerspiele: { ordner: 'hoerspiele/', name: 'Hörspiele' }, medien: { ordner: 'radio/', name: 'Radio' }, privatnotizen: { ordner: 'notizen/', name: 'Notizen' }, links: { ordner: 'links/', name: 'Links' }, dokumente: { ordner: 'dokumente/', name: 'Dokumente' }, dokusuche: { ordner: 'dokusuche/', name: 'Doku-Suche' }, aufgaben: { ordner: 'aufgabenliste/', name: 'Aufgabenliste' }, tasks: { ordner: 'tasks/', name: 'Google Tasks' }, hilfe: { ordner: 'hilfe/', name: 'Hilfe' }, tagebuch: { ordner: 'tagebuch/', name: 'Tagebuch' }, wissen: { ordner: 'wissen/', name: 'Wissen' }, vokabeln: { ordner: 'vokabeln/', name: 'Vokabeln' }, redewendungen: { ordner: 'redewendungen/', name: 'Redewendungen' }, training: { ordner: 'training/', name: 'Training' }, essen: { ordner: 'essen/', name: 'Essen' }, gewicht: { ordner: 'gewicht/', name: 'Gewicht' }, rezepte: { ordner: 'rezepte/', name: 'Rezepte' } };
   var BILDER = ['', 'schnell', 'schnellarbeit', 'einkauf', 'geldverschiebung', 'haushalt', 'urlaub', 'vertraege', 'trading', 'hoerspiele', 'medien', 'training'];
+  var EIGEN = ['schnell', 'schnellarbeit', 'einkauf', 'frag', 'wohnzimmer', 'nachrichten'];
   /* ORTE-ENDE */
   // Der Hauptordner: die Adresse ohne den Ordner einer Seite am Ende. Verglichen wird mit dem Schrägstrich davor, damit
   // „…/aufgabenliste/“ nicht für „…/liste/“ gehalten würde.
@@ -185,28 +180,141 @@
     } catch (e) {}
   }
 
-  function zeigen(adresse, tab) {
-    einrichten.style.display = 'none';
-    hilfe.style.display = 'none';
-    rahmen.style.display = 'block';
-    // Seit v566: Messung beginnt. Beim ersten Öffnen zählt die Zeit ab dem Antippen (Start dieser Seite), danach ab dem Seitenwechsel.
-    messung = { tab: tab, start: ersteMessung ? 0 : performance.now(), da: -1, bild: -1, bereit: -1 };
-    ersteMessung = false;
-    seiteDa = false; seiteQuelle = null; seiteHerkunft = '';
-    bildZeigen(tab);
+  /* ================= Seiten wach halten, seit v575 (24.11.2026) =================
+     Bis v572 gab es einen einzigen Rahmen. Jeder Wechsel zwischen den Seitendateien des Dashboards (Schnellseite Aufgaben, Arbeit,
+     Einkauf, das große Dashboard) lud dort die neue Seite und warf die alte weg, der Weg zurück dauerte wieder fünf bis acht
+     Sekunden. Jetzt hat jede Seitendatei ihren eigenen Rahmen (becken). Beim Wechsel bleibt die alte Seite unsichtbar wach liegen.
+     Führt ein späterer Wechsel wieder zu ihr, fragt die Rahmenseite sie mit „wieder“, ob sie den gewünschten Bereich zeigen kann.
+     Antwortet sie mit „wach“, liegt sie sofort vorn, ohne Neuladen, und holt ihre Zahlen still frisch. Sagt sie ab („schlaf“,
+     anderer Bereich) oder antwortet gar nicht (ältere Fassung, 0,7 Sekunden), wird wie bisher neu geladen. Im großen Dashboard wechselt „wieder“ auch nur den Bereich.
+     Regeln: Nur die sichtbare Seite darf Seitenwechsel und Adresse bestimmen. Versteckte Seiten sind stillgelegt (inert) und
+     unsichtbar. Nach „vergessen“ (Notaus, alle Geräte abmelden, neuer Code) und bei der Anmeldeseite fliegen alle anderen Seiten
+     raus, damit nie ein alter Stand wieder auftaucht. Höchstens vier Seiten bleiben wach, höchstens eine halbe Stunde. */
+  var ERLAUBT = 'clipboard-read; clipboard-write; fullscreen; web-share; microphone; autoplay; encrypted-media; picture-in-picture';
+  var becken = {};      // je Seitendatei ein Rahmen: { el, datei, tab, da, bereit, quelle, herkunft, anmeldung, versteckt, vorab }
+  var aktiv = null;     // der sichtbare Rahmen
+  var frage = null, frageNr = 0, frageUhr = 0;
+  var WACH_MAX = 30 * 60 * 1000, WIEDER_WARTEN = 700, BECKEN_MAX = 4;
+
+  /** Welche Seitendatei des Dashboards einen tab ausliefert: die eigenen Seiten (EIGEN) je eine, alles andere das große Dashboard. */
+  function dateiVon(tab) { return EIGEN.indexOf(tab) !== -1 ? tab : 'dashboard'; }
+
+  /** Aus welchem unserer Rahmen kommt die Nachricht? Bei Google steckt die eigentliche Seite zwei Rahmen tief darin. */
+  function rahmenVon(quelle) {
+    try {
+      var w = quelle;
+      for (var i = 0; i < 5 && w; i++) {
+        for (var d in becken) { if (becken[d].el.contentWindow === w) return becken[d]; }
+        if (w === w.parent) break;
+        w = w.parent;
+      }
+    } catch (e) {}
+    return null;
+  }
+  function senden(f, nachricht) {
+    if (!f || !f.quelle) return false;
+    try { nachricht.dashboardRahmen = 1; f.quelle.postMessage(nachricht, f.herkunft); return true; } catch (e) { return false; }
+  }
+  function rahmenWeg(f) {
+    if (!f) return;
+    try { f.el.parentNode.removeChild(f.el); } catch (e) {}
+    if (becken[f.datei] === f) delete becken[f.datei];
+    if (aktiv === f) aktiv = null;
+  }
+  function beckenLeeren(ausser) { for (var d in becken) { if (becken[d] !== ausser) rahmenWeg(becken[d]); } }
+
+  /** Hängt einen neuen Rahmen für die Seite ein, zunächst unsichtbar. Ein älterer Rahmen derselben Seitendatei weicht ihm. */
+  function rahmenNeu(adresse, tab, vorab) {
+    var datei = dateiVon(tab);
+    rahmenWeg(becken[datei]);
+    var el = document.createElement('iframe');
+    el.className = 'seite';
+    el.title = 'Dashboard';
+    el.setAttribute('allow', ERLAUBT);
+    el.setAttribute('inert', '');
+    el.setAttribute('aria-hidden', 'true');
     // rahmen=1 sagt dem Dashboard, dass es im Rahmen läuft.
     var wz = tab === 'wohnzimmer' ? wzLesen() : '';
-    rahmen.src = adresse + '?rahmen=1' + (tab ? '&tab=' + encodeURIComponent(tab) : '') + (code ? '&code=' + encodeURIComponent(code) : '') + (wz ? '&wz=' + wz : '');
+    el.src = adresse + '?rahmen=1' + (tab ? '&tab=' + encodeURIComponent(tab) : '') + (code ? '&code=' + encodeURIComponent(code) : '') + (wz ? '&wz=' + wz : '');
+    var f = becken[datei] = { el: el, datei: datei, tab: tab, da: false, bereit: false, quelle: null, herkunft: '', anmeldung: false, versteckt: Date.now(), vorab: !!vorab };
+    document.body.insertBefore(el, bildRahmen);
+    return f;
+  }
+
+  /** Legt einen Rahmen nach vorn. Die bisher sichtbare Seite bleibt wach, wird aber unsichtbar und stillgelegt und hält mit „ruhe“
+      noch schnell ihren letzten Stand als Bild fest. */
+  function nachVorn(f) {
+    var alt = aktiv;
+    if (alt && alt !== f) {
+      alt.el.classList.remove('vorn');
+      alt.el.classList.add('geht');
+      (function (el) { setTimeout(function () { el.classList.remove('geht'); }, 150); })(alt.el);
+      alt.el.removeAttribute('id');
+      alt.el.setAttribute('inert', '');
+      alt.el.setAttribute('aria-hidden', 'true');
+      alt.versteckt = Date.now();
+      senden(alt, { was: 'ruhe' });
+    }
+    aktiv = f;
+    f.vorab = false;
+    f.el.id = 'rahmen';
+    f.el.classList.remove('geht');
+    f.el.classList.add('vorn');
+    f.el.removeAttribute('inert');
+    f.el.removeAttribute('aria-hidden');
+    // Nicht mehr als BECKEN_MAX Seiten wach halten: die am längsten versteckte weicht.
+    var liste = [];
+    for (var d in becken) { if (becken[d] !== f) liste.push(becken[d]); }
+    liste.sort(function (x, y) { return x.versteckt - y.versteckt; });
+    while (liste.length > BECKEN_MAX - 1) rahmenWeg(liste.shift());
+  }
+
+  /** Zeigt eine Seite. Liegt sie schon wach im Hintergrund, kommt sie ohne Neuladen nach vorn, sonst wird sie geladen und so
+      lange ihr Sofortbild gezeigt. frisch: alles neu laden (Zugangscode eingegeben, „Noch einmal versuchen“). */
+  function zeigen(adresse, tab, frisch) {
+    einrichten.style.display = 'none';
+    hilfe.style.display = 'none';
+    clearTimeout(frageUhr); frage = null;
+    if (frisch) beckenLeeren(null);
+    var f = becken[dateiVon(tab)];
+    if (f && f.bereit && !f.anmeldung && (f === aktiv || Date.now() - f.versteckt < WACH_MAX)) { wiederFragen(f, adresse, tab); return; }
+    // Eine Seite, die gerade vorab lädt und genau die gewünschte ist, wird übernommen statt noch einmal geladen.
+    if (f && f !== aktiv && f.vorab && f.tab === tab && !f.anmeldung) { laden(f, tab); return; }
+    laden(rahmenNeu(adresse, tab, false), tab);
+  }
+
+  /** Eine ladende Seite nach vorn: Messung beginnt, das Sofortbild liegt darüber, nach zwölf Sekunden ohne Lebenszeichen der Hinweis. */
+  function laden(f, tab) {
+    // Seit v566: Beim ersten Öffnen zählt die Zeit ab dem Antippen (Start dieser Seite), danach ab dem Seitenwechsel.
+    messung = { tab: tab, start: ersteMessung ? 0 : performance.now(), da: f.da ? 0 : -1, bild: -1, bereit: -1 };
+    ersteMessung = false;
+    // Eine vorgeladene Seite, die schon „da“ ist, hat „ruhe“ bekommen. Sie wird geweckt, sobald sie „bereit“ meldet.
+    if (f.da) f.wecken = true;
+    nachVorn(f);
+    wunschWeg();
+    bildZeigen(tab);
     // Von außen lässt sich nicht sehen, ob Google im Rahmen etwas anzeigt. Deshalb kommt nach einer Weile
     // ein kleiner Hinweis mit Auswegen. Meldet sich das Dashboard vorher (Nachricht „da“), bleibt er weg.
     clearTimeout(wecker);
-    wecker = setTimeout(function () { hilfe.style.display = 'block'; }, 12000);
+    if (!f.da) wecker = setTimeout(function () { hilfe.style.display = 'block'; }, 12000);
+  }
+
+  /** Fragt eine wache Seite, ob sie den Bereich zeigen kann. Ohne Antwort in 0,7 Sekunden wird neu geladen. */
+  function wiederFragen(f, adresse, tab) {
+    var nr = ++frageNr;
+    frage = { nr: nr, f: f, tab: tab, t0: performance.now() };
+    senden(f, { was: 'wieder', tab: tab, nr: nr, pause: f === aktiv ? 0 : Date.now() - f.versteckt });
+    frageUhr = setTimeout(function () {
+      if (!frage || frage.nr !== nr) return;
+      frage = null;
+      laden(rahmenNeu(adresse, tab, false), tab);
+    }, WIEDER_WARTEN);
   }
 
   function einrichtenZeigen(text) {
-    clearTimeout(wecker);
+    clearTimeout(wecker); clearTimeout(frageUhr); frage = null;
     bildWeg(false);
-    rahmen.style.display = 'none'; rahmen.removeAttribute('src');
+    beckenLeeren(null);
     hilfe.style.display = 'none';
     einrichten.style.display = 'flex';
     var m = document.getElementById('meldung');
@@ -217,85 +325,158 @@
     var a = saeubern(roh);
     if (!a) { einrichtenZeigen('Das ist keine Adresse des Dashboards. Sie beginnt mit https://script.google.com/macros/s/ und endet auf /exec.'); return; }
     if (!schreiben(a)) { einrichtenZeigen('Dieser Browser lässt das Speichern nicht zu (etwa im privaten Modus). Ohne das geht die Rahmenseite hier nicht.'); return; }
-    zeigen(a, startTab());
+    zeigen(a, startTab(), true);
   }
 
   document.getElementById('merken').addEventListener('click', function () { hinterlegen(document.getElementById('adresse').value); });
   document.getElementById('adresse').addEventListener('keydown', function (e) { if (e.key === 'Enter') hinterlegen(this.value); });
   document.getElementById('direkt').addEventListener('click', function () { var a = lesen(); if (a) window.open(a, '_blank', 'noopener'); });
-  document.getElementById('neuLaden').addEventListener('click', function () { var a = lesen(); if (a) zeigen(a, startTab()); });
-  // Mit der Adresse gehen auch alle Sofortbilder dieses Geräts (seit v566).
-  document.getElementById('vergessen').addEventListener('click', function () { loeschen(); bilderVergessen(); einrichtenZeigen(''); });
+  document.getElementById('neuLaden').addEventListener('click', function () { var a = lesen(); if (a) zeigen(a, startTab(), true); });
+  // Mit der Adresse gehen auch alle Sofortbilder dieses Geräts (seit v566) und die gemerkten Wege (seit v575).
+  document.getElementById('vergessen').addEventListener('click', function () { loeschen(); bilderVergessen(); wegeVergessen(); einrichtenZeigen(''); });
   document.getElementById('hilfeZu').addEventListener('click', function () { hilfe.style.display = 'none'; });
+  // Notausgang seit v575: Hängt eine alte Fassung dieser Rahmenseite im Zwischenspeicher, holt dieser Knopf sie frisch von GitHub.
+  document.getElementById('frisch').addEventListener('click', frischHolen);
 
-  // Nachrichten aus dem Dashboard. Angenommen werden sie nur aus dem Rahmen selbst und nur von Googles Adressen.
+  // Nachrichten aus dem Dashboard. Angenommen werden sie nur von Googles Adressen und seit v575 nur noch aus einem unserer
+  // eigenen Rahmen (vorher galt das nur für „bild“ und „bereit“). Seitenwechsel und Adresse bestimmt nur die sichtbare Seite.
   window.addEventListener('message', function (e) {
     if (!/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(e.origin) && e.origin !== 'https://script.google.com') return;
     var d = e.data;
     if (!d || typeof d !== 'object' || d.dashboardRahmen !== 1) return;
+    var f = rahmenVon(e.source);
+    if (!f) return;
+    var vorn = f === aktiv;
     var tabOk = typeof d.tab === 'string' && /^[a-z-]{0,30}$/.test(d.tab);
     // „da“: Das Dashboard (oder seine Anmeldeseite) ist im Rahmen angekommen. Der Hinweis bleibt weg, und die Seite bekommt „ok“ zurück.
     // Erst mit diesem „ok“ schickt sie ihre Seitenwechsel hierher, statt das ganze Fenster zu laden.
     // Seit v566 stehen im „ok“ auch die Seiten mit Sofortbild (bilder) und die schon gemerkten Gestaltungen (css).
     if (d.was === 'da') {
-      clearTimeout(wecker); hilfe.style.display = 'none';
-      seiteDa = true;
-      if (ausUnseremRahmen(e.source)) { seiteQuelle = e.source; seiteHerkunft = e.origin; }
-      if (messung && messung.da < 0) messung.da = Math.round(performance.now() - messung.start);
+      f.da = true; f.bereit = false; f.quelle = e.source; f.herkunft = e.origin; f.anmeldung = d.anmeldung === 1;
       try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL, bilder: BILDER, css: cssBekannt }, e.origin); } catch (err) {}
-      // Die Anmeldeseite heißt: Dieses Gerät ist gerade nicht angemeldet. Dann zeigt es auch keine alten Bilder mehr.
-      if (d.anmeldung === 1) { bilderVergessen(); bildWeg(false); }
-      else if (bildAn) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, BILD_NACH_DA); }
+      // Die Anmeldeseite heißt: Dieses Gerät ist gerade nicht angemeldet. Dann zeigt es keine alten Bilder und keine wachen Seiten mehr.
+      if (f.anmeldung) {
+        bilderVergessen(); wegeVergessen(); bildSperre = true;
+        if (vorn) { bildWeg(false); beckenLeeren(f); } else rahmenWeg(f);
+      } else bildSperre = false;
+      // Eine Seite, die im Hintergrund lädt (vorgeladen oder gerade verlassen), bekommt gleich „ruhe“: keine wiederkehrenden Abrufe.
+      if (!vorn) { if (!f.anmeldung) senden(f, { was: 'ruhe' }); return; }
+      clearTimeout(wecker); hilfe.style.display = 'none';
+      if (messung && messung.da < 0) messung.da = Math.round(performance.now() - messung.start);
+      if (!f.anmeldung && bildAn) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, BILD_NACH_DA); }
+      if (!f.anmeldung) wunschSenden();
       return;
     }
     // Seit v566, Sofortbild. „bereit“: Die Seite ist fertig gezeichnet, das Bild weicht ihr. Die gemessene Zeit geht an die Seite zurück,
     // die sie einmal an den Server meldet (Einstellungen, „Welche Seiten wie oft, wie schnell“).
-    if (d.was === 'bereit' && tabOk && ausUnseremRahmen(e.source)) {
+    if (d.was === 'bereit' && tabOk) {
+      f.bereit = true;
+      if (!vorn) return;
       clearTimeout(wecker); hilfe.style.display = 'none';
-      seiteDa = true;
+      if (f.wecken) { f.wecken = false; senden(f, { was: 'wieder', tab: f.tab, nr: 0, pause: 0 }); }
       bildWeg(true);
       if (messung && messung.bereit < 0) {
         messung.bereit = Math.round(performance.now() - messung.start);
-        try { e.source.postMessage({ dashboardRahmen: 1, was: 'zeit', tab: d.tab, ms: messung.bereit, bild: messung.bild }, e.origin); } catch (err) {}
+        senden(f, { was: 'zeit', tab: d.tab, ms: messung.bereit, bild: messung.bild });
       }
+      vorladenBald();
       return;
     }
-    // „bild“: ein frisches Bild der Seite zum Merken. Nur für Seiten aus BILDER und nur aus dem eigenen Rahmen.
-    if (d.was === 'bild' && tabOk && BILDER.indexOf(d.tab) !== -1 && ausUnseremRahmen(e.source)) { bildMerken(d, e.source, e.origin); return; }
-    // „vergessen“: Notaus, alle Geräte abgemeldet oder neuer Zugangscode. Alle Bilder dieses Geräts weg.
-    if (d.was === 'vergessen') { bilderVergessen(); bildWeg(false); return; }
+    // „bild“: ein frisches Bild der Seite zum Merken. Nur für Seiten aus BILDER.
+    if (d.was === 'bild' && tabOk && BILDER.indexOf(d.tab) !== -1) { if (!bildSperre) bildMerken(d, e.source, e.origin); return; }
+    // „vergessen“: Notaus, alle Geräte abgemeldet oder neuer Zugangscode. Alle Bilder dieses Geräts weg, und alle anderen wachen
+    // Seiten gleich mit, damit keine von ihnen später mit einem alten Stand wieder nach vorn kommt.
+    if (d.was === 'vergessen') { bilderVergessen(); wegeVergessen(); bildSperre = true; bildWeg(false); beckenLeeren(vorn ? f : aktiv); return; }
+    // „wach“: Antwort auf „wieder“. Die wache Seite zeigt den gewünschten Bereich, sie kommt ohne Neuladen nach vorn.
+    if (d.was === 'wach') {
+      if (!frage || frage.f !== f || d.nr !== frage.nr) return;
+      var fr = frage;
+      frage = null; clearTimeout(frageUhr); clearTimeout(wecker); hilfe.style.display = 'none';
+      wunschWeg();
+      bildWeg(false);
+      nachVorn(f);
+      f.tab = fr.tab;
+      messung = null;
+      senden(f, { was: 'zeit', tab: fr.tab, ms: Math.max(1, Math.round(performance.now() - fr.t0)), bild: -1, wieder: 1 });
+      vorladenBald();
+      return;
+    }
+    // „schlaf“: Die wache Seite kann den gewünschten Bereich nicht zeigen. Dann wird ohne weiteres Warten neu geladen.
+    if (d.was === 'schlaf') {
+      if (!frage || frage.f !== f || d.nr !== frage.nr) return;
+      var ab = frage, adr = lesen();
+      frage = null; clearTimeout(frageUhr);
+      if (adr) laden(rahmenNeu(adr, ab.tab, false), ab.tab);
+      return;
+    }
+    // Alles Weitere darf nur die sichtbare Seite.
+    if (!vorn) return;
+    // „gerollt“: Die Seite steht an der Stelle, bis zu der im Bild gescrollt wurde. Jetzt darf das Bild weichen.
+    if (d.was === 'gerollt') { if (rollWarten && d.nr === rollWarten.nr) rollWarten.weiter(); return; }
+    // „getippt“: Antwort auf einen weitergereichten Tipp. Hat die Seite den Knopf gedrückt, weicht das Bild.
+    if (d.was === 'getippt') {
+      if (d.ok === true) { if (tippLauf === bildLauf) bildWeg(true, true); }
+      else { druckWeg(); standSetzen(''); }
+      return;
+    }
+    // „laedt“ (seit v575): Im Dashboard wurde ein Bereich geöffnet, der seine Daten erst holt. Bis er „bereit“ meldet, liegt sein
+    // letztes Bild darüber, statt dass man auf „lädt …“ schaut.
+    if (d.was === 'laedt' && tabOk && BILDER.indexOf(d.tab) !== -1) { f.tab = d.tab; f.bereit = false; wunschWeg(); bildZeigen(d.tab); return; }
     // Seitenwechsel im Rahmen (Startseite, Aufgaben, Arbeit): Das Dashboard nennt nur den Namen der Seite, nie eine Adresse.
     // „code“ kommt von der Anmeldeseite: Dashboard mit dem eingetippten Code im Rahmen neu laden.
     if ((d.was === 'gehe' || d.was === 'code') && tabOk) {
       if (typeof d.code === 'string' && CODE_MUSTER.test(d.code)) code = d.code;
       var a = lesen();
-      if (a) { ortMerken(d.tab); zeigen(a, d.tab); }
+      if (!a) return;
+      // Will die sichtbare Seite sich selbst noch einmal (derselbe Bereich) oder bittet sie ausdrücklich um Neuladen (neu: 1, etwa der
+      // Knopf nach einem Fehler oder das nächtliche Neuladen der Kommandozentrale), wird sie frisch von Google geholt, nicht geweckt.
+      var selbst = d.was === 'gehe' && (d.neu === 1 || (dateiVon(d.tab) === f.datei && d.tab === f.tab));
+      if (selbst) { ortMerken(d.tab); rahmenWeg(becken[dateiVon(d.tab)]); zeigen(a, d.tab); return; }
+      if (d.was === 'gehe') wegMerken(f.datei, d.tab);
+      ortMerken(d.tab, d.was === 'gehe');
+      zeigen(a, d.tab, d.was === 'code');
       return;
     }
     // „ort“: Im Dashboard wurde ein anderer Bereich geöffnet (ohne neue Seite). Nur die Adresse hier oben zieht nach,
     // damit Neuladen und ein Lesezeichen wieder dort landen.
-    if (d.was === 'ort' && tabOk) ortMerken(d.tab);
+    if (d.was === 'ort' && tabOk) { f.tab = d.tab; ortMerken(d.tab); }
   });
 
   /** Schreibt den offenen Bereich in die Adresse dieser Rahmenseite, ohne neu zu laden: die beiden Schnellseiten als eigener
       Ordner (…/aufgaben/, …/arbeit/), alles andere als ?tab=… am Hauptordner. Neuladen und ein Lesezeichen landen so wieder dort. */
-  function ortMerken(tab) {
+  function ortMerken(tab, neuerSchritt) {
     // Als App bleibt die Adresse im eigenen Ordner. Verließe sie ihn, blendete der Browser in der App eine Adressleiste ein.
     var ziel = ALS_APP
       ? HEIMAT + (tab === heimatTab() ? '' : '?tab=' + (tab || 'start'))
       : (ORTE[tab] ? WURZEL + ORTE[tab].ordner : WURZEL + (tab ? '?tab=' + tab : ''));
-    try { history.replaceState(null, '', ziel); } catch (e) {}
+    // Seit v575: Ein Wechsel auf eine andere Seite (neuerSchritt) ist ein eigener Schritt im Verlauf. Die Zurück-Taste des Handys
+    // führt dann zur Seite davor. Bis v572 machte das der Browser von selbst, weil der eine Rahmen jedes Mal neu geladen wurde.
+    try { history[neuerSchritt ? 'pushState' : 'replaceState']({ dashboardTab: tab }, '', ziel); } catch (e) {}
     if (!ALS_APP) kennzeichnen(tab);
   }
+  // Zurück oder Vor im Verlauf: die Seite dieses Schritts zeigen. Liegt sie noch wach im Hintergrund, geht das ohne Neuladen.
+  window.addEventListener('popstate', function (ev) {
+    var st = ev.state, a = lesen();
+    var tab = st && typeof st.dashboardTab === 'string' && /^[a-z-]{0,30}$/.test(st.dashboardTab) ? st.dashboardTab : startTab();
+    if (!a) return;
+    if (!ALS_APP) kennzeichnen(tab);
+    zeigen(a, tab);
+  });
 
-  /* ================= Sofortbild, seit v566 (24.11.2026) =================
+  /* ================= Sofortbild, seit v566 (24.11.2026), umgebaut in v575 =================
      Die Seiten des Dashboards schicken, wenn sie fertig gezeichnet sind, ein Bild ihres Inhalts (HTML ohne Skripte, dazu einmal
      ihre Gestaltung). Hier wird je Seite (tab) das letzte Bild gemerkt und beim nächsten Öffnen sofort gezeigt, während das echte
      Dashboard dahinter lädt. Meldet es „bereit“, blendet das Bild aus. Regeln:
-     - Nur zum Ansehen. Es läuft in einem Rahmen mit sandbox ohne jede Erlaubnis (die festen Leisten in einem zweiten, genauso
-       abgeschotteten), in einer Fläche, die jeden Tipp abfängt und sich seit v573 scrollen lässt wie die echte Seite.
-       Vor „da“ kommt nur der Hinweis „Gleich bereit“, danach weicht das Bild sofort der echten Seite, und ein Knopf, der nur etwas
-       öffnet, wird dort gedrückt (seit v571). So wird nie etwas doppelt oder auf einem alten Stand gebucht.
+     - Ansehen und scrollen, sonst nichts. Das Bild läuft in einem Rahmen ohne allow-scripts, sein Inhalt ist stillgelegt (inert,
+       dazu pointer-events: none): kein Skript, keine Eingabe, kein Haken, kein Link. Scrollen macht der Browser selbst, deshalb
+       geht es sofort und fühlt sich an wie auf der echten Seite. Weicht das Bild, geht die Scrollposition an die echte Seite
+       („rollen“), sie springt erst dorthin und das Bild blendet danach aus.
+     - Ein Tipp auf das Bild tut nur etwas, wenn die Seite die Stelle beim Aufnehmen als „öffnet nur etwas“ gekennzeichnet hat
+       (data-tipp, etwa ein Bereich, das Menü, eine Schnellseite). Dann merkt sich die Rahmenseite den Wunsch und reicht die
+       Kennung weiter, sobald die echte Seite da ist. Die Seite sucht den Knopf mit genau dieser Kennung und drückt ihn. Es geht
+       also nie nach der Stelle auf dem Bildschirm, eine verschobene Liste kann nichts Falsches auslösen. Knöpfe, die buchen,
+       abhaken, speichern oder löschen, bekommen nie eine Kennung. Führt der Tipp auf eine andere Seite des Dashboards
+       (data-tipp-gehe), wechselt die Rahmenseite sofort, ohne auf die Seite dahinter zu warten. Jeder andere Tipp tut still nichts.
      - Gespeichert in IndexedDB dieses Geräts, verschlüsselt mit AES-GCM. Der Schlüssel liegt nicht auslesbar daneben. Das schützt
        die Dateien auf dem Gerät, nicht vor einem Skript derselben Herkunft (pippomirco.github.io): Darum darf es dort keine weiteren
        Seiten mit Skripten geben (geprüft am 24.11.2026: es gibt nur das Repo dashboard).
@@ -303,31 +484,21 @@
        „vergessen“ (Notaus, alle Geräte abmelden, neuer Code), bei der Anmeldeseite und bei „Adresse neu hinterlegen“.
      - Welche Seiten ein Bild bekommen, steht in BILDER (aus pruefung/rahmen/orte.js, Merkmal bild). */
   var bildRahmen = document.getElementById('bild');
-  var bildDecke = document.getElementById('bildDecke');
-  var bildFest = document.getElementById('bildFest');
-  // Ebene für die festen Leisten (seit v573): nur sie sind zu sehen, alles andere unsichtbar und der Grund durchsichtig.
-  var FEST_CSS = 'html,body{background:transparent!important;background-image:none!important}'
-    + 'html::before,html::after,body::before,body::after{display:none!important}:root{color-scheme:normal!important}'
-    + 'body *{visibility:hidden!important}[data-bild-fest],[data-bild-fest] *{visibility:visible!important}'
-    + '[data-bild-fest][data-bild-weg],[data-bild-fest] [data-bild-weg],[data-bild-fest] [data-bild-weg] *{visibility:hidden!important}';
   var standLeiste = document.getElementById('stand');
-  var gleichHinweis = document.getElementById('gleich');
   var BILD_DB = 'dashboard_sofortbild', BILD_TAGE = 14, BILD_MAX = 1000000, CSS_MAX = 1500000;
-  var messung = null, ersteMessung = true, seiteDa = false;
-  // Seit v571: wohin ein Tipp auf das Bild weitergereicht wird (die Seite, die „da“ gemeldet hat, nur aus dem eigenen Rahmen).
-  var seiteQuelle = null, seiteHerkunft = '', tippStart = null;
-  var bildAn = false, bildLauf = 0, bildWecker = 0, gleichUhr = 0;
+  var messung = null, ersteMessung = true;
+  var bildAn = false, bildLauf = 0, bildWecker = 0, bildTab = '', bildZeit = 0;
+  // Seit v575: ein gemerkter Tipp (wunsch), der an die echte Seite geht, sobald sie da ist. Älter als WUNSCH_MAX wird er verworfen.
+  var wunsch = null, tippLauf = -1, rollWarten = null, rollNr = 0;
+  var WUNSCH_MAX = 20000, ROLL_WARTEN = 160;
   // Seit v568: Kommt nach „da“ so lange kein „bereit“, weicht das Bild trotzdem (vorher 10 Sekunden, am 24.11.2026 stand das Bild so
   // auf der Startseite rund 17 Sekunden). Die echte Seite ist dann schon bedienbar und lädt höchstens noch Zahlen nach.
   var BILD_NACH_DA = 3000;
   var cssBekannt = [];
   var dbVersprechen = null, schluesselVersprechen = null;
-
-  /** Kommt die Nachricht aus dem Rahmen dieser Seite? Bei Google steckt die eigentliche Seite zwei Rahmen tief darin. */
-  function ausUnseremRahmen(quelle) {
-    try { var w = quelle; for (var i = 0; i < 5 && w; i++) { if (w === rahmen.contentWindow) return true; if (w === w.parent) break; w = w.parent; } } catch (e) {}
-    return false;
-  }
+  // Seit v575: Nach „vergessen“ oder der Anmeldeseite werden keine Bilder mehr angenommen, bis eine Seite frisch und angemeldet
+  // geladen ist. Sonst könnte dieselbe, noch offene Seite kurz danach ein neues Bild nachschieben, und das bliebe liegen.
+  var bildSperre = false;
 
   function db() {
     if (dbVersprechen) return dbVersprechen;
@@ -417,8 +588,7 @@
     }
     var jetzt = Date.now();
     var inhalt = { html: saeubernHtml(d.html), cssId: d.cssId, htmlAttr: saeubernAttr(d.htmlAttr), bodyAttr: saeubernAttr(d.bodyAttr),
-      zeit: typeof d.zeit === 'number' && d.zeit > 0 && d.zeit <= jetzt + 60000 ? d.zeit : jetzt,
-      hoehe: typeof d.hoehe === 'number' && d.hoehe > 0 && d.hoehe < 20000 ? Math.round(d.hoehe) : 0 };
+      zeit: typeof d.zeit === 'number' && d.zeit > 0 && d.zeit <= jetzt + 60000 ? d.zeit : jetzt };
     var schritte = Promise.resolve();
     if (mitCss) {
       var css = d.css.replace(/<\/(style)/gi, '<\\/$1');
@@ -465,6 +635,17 @@
     if (tab === 'trading') return 'Kurse von ' + tag + uhr + ', nicht aktuell. Wird aktualisiert …';
     return 'Stand ' + tag + uhr + ', wird aktualisiert …';
   }
+  /** Die kleine Zeile oben. zusatz: etwa „Öffnet sich gleich …“ nach einem gemerkten Tipp. Sie ist die einzige Ladeanzeige. */
+  function standSetzen(zusatz) {
+    if (!bildAn) return;
+    standLeiste.textContent = '';
+    var punkt = document.createElement('span');
+    punkt.className = 'punkt';
+    standLeiste.appendChild(punkt);
+    standLeiste.appendChild(document.createTextNode(zusatz ? zusatz : standText(bildZeit, bildTab)));
+    standLeiste.className = bildTab === 'trading' ? 'alt' : '';
+    standLeiste.style.display = 'block';
+  }
 
   /** Zeigt das gemerkte Bild der Seite sofort, falls es eins gibt. Das echte Dashboard lädt derweil dahinter. */
   function bildZeigen(tab) {
@@ -484,95 +665,236 @@
       });
     }).then(function (x) {
       // Kam die echte Seite schon an (oder wurde inzwischen gewechselt), wird nichts mehr gezeigt.
-      if (!x || lauf !== bildLauf || (messung && messung.bereit >= 0)) return;
-      var extra = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;cursor:progress!important}'
-        + 'html,body{overflow:hidden!important}'
+      if (!x || lauf !== bildLauf || !aktiv || aktiv.bereit || aktiv.anmeldung) return;
+      // Zusatz zur Gestaltung der Seite: nichts bewegt sich von selbst, nichts lässt sich anfassen (zweites Netz neben inert),
+      // kein Wartezeiger. Scrollen bleibt, das macht der Browser. Ein gemerkter Tipp sieht kurz gedrückt aus.
+      var extra = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'
+        + 'html{cursor:default!important;scroll-behavior:auto!important}'
+        + 'html[data-nur-ansehen] body,html[data-nur-ansehen] body *{pointer-events:none!important;-webkit-user-select:none!important;user-select:none!important}'
+        + '[data-gedrueckt]{filter:brightness(1.35)!important;outline:2px solid #56B4E9!important;outline-offset:1px!important}'
         + (tab === 'trading' ? 'body{opacity:.42!important;filter:grayscale(.7)!important}' : '');
+      // Für jedes Bild ein frischer Rahmen (bildFrisch): So entsteht kein Schritt im Verlauf des Browsers, die Zurück-Taste führt
+      // gleich zur Seite davor und nicht erst durch alte Bilder.
+      bildFrisch();
       bildRahmen.onload = function () {
         if (lauf !== bildLauf || !bildAn) return;
         if (messung && messung.bild < 0) messung.bild = Math.round(performance.now() - messung.start);
+        bildLauschen();
       };
-      var kopf = '<!doctype html><html' + attrText(x.inhalt.htmlAttr) + '><head><meta charset="utf-8">'
-        + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>' + x.css + '</style><style>' + extra;
-      var rumpf = '</style></head><body' + attrText(x.inhalt.bodyAttr) + '>' + x.inhalt.html + '</body></html>';
-      // Seit v573 scrollbar: Ist der Inhalt höher als der Bildschirm, wird der Rahmen so hoch wie er, und die festen Leisten kommen
-      // in die Ebene darüber (im hohen Rahmen stünde eine Leiste „unten“ sonst erst ganz unten). Ältere Bilder ohne hoehe wie bisher.
-      var hoehe = Number(x.inhalt.hoehe) || 0, rollen = hoehe > window.innerHeight + 4;
-      bildRahmen.srcdoc = kopf + (rollen ? '[data-bild-fest]{display:none!important}' : '') + rumpf;
-      bildRahmen.style.height = rollen ? hoehe + 'px' : '100%';
+      // base target=_blank: Sollte ein Link doch einmal einen Klick bekommen (alter Browser ohne inert), ginge er in ein neues
+      // Fenster, und das verbietet sandbox. Im Bild selbst kann so nie eine fremde Seite landen.
+      bildRahmen.srcdoc = '<!doctype html><html' + attrText(x.inhalt.htmlAttr) + ' data-nur-ansehen=""><head><meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><base target="_blank"><style>' + x.css + '</style><style>' + extra + '</style></head>'
+        + '<body' + attrText(x.inhalt.bodyAttr) + ' inert="">' + x.inhalt.html + '</body></html>';
+      bildRahmen.classList.remove('weg');
       bildRahmen.style.display = 'block';
-      bildDecke.classList.remove('weg');
-      bildDecke.style.pointerEvents = '';
-      bildDecke.style.display = 'block';
-      bildDecke.scrollTop = 0;
-      if (rollen) {
-        bildFest.srcdoc = kopf + FEST_CSS + rumpf;
-        bildFest.classList.remove('weg');
-        bildFest.style.display = 'block';
-        // Am PC nimmt der Rollbalken rechts Platz weg, die festen Leisten der echten Seite stehen links davon.
-        var balken = bildDecke.offsetWidth - bildDecke.clientWidth;
-        bildFest.style.width = balken > 0 ? 'calc(100% - ' + balken + 'px)' : '100%';
-      }
-      standLeiste.innerHTML = '<span class="punkt"></span>';
-      standLeiste.appendChild(document.createTextNode(standText(x.inhalt.zeit, tab)));
-      standLeiste.className = tab === 'trading' ? 'alt' : '';
-      standLeiste.style.display = 'block';
-      bildAn = true;
+      bildAn = true; bildTab = tab; bildZeit = x.inhalt.zeit;
+      standSetzen('');
       // Öffnen zählt als Benutzung: Die 14 Tage beginnen neu.
       eintrag.zuletzt = Date.now();
       speicher('bilder', 'readwrite', function (s) { return s.put(eintrag); }).catch(function () {});
       // Ist die Seite schon da, meldet aber kein „bereit“ (ältere Fassung, Daten hängen), weicht das Bild nach BILD_NACH_DA trotzdem.
-      if (seiteDa) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, BILD_NACH_DA); }
+      if (aktiv.da) { clearTimeout(bildWecker); bildWecker = setTimeout(function () { bildWeg(true); }, BILD_NACH_DA); }
     }).catch(function () {});
   }
 
-  /** Nimmt das Bild weg, sanft (überblenden) oder sofort. */
-  function bildWeg(sanft) {
-    clearTimeout(bildWecker);
-    gleichHinweis.style.display = 'none';
-    if (!bildAn && bildRahmen.style.display !== 'block') return;
-    // Seit v573: Wurde im Bild gescrollt, übernimmt die echte Seite an derselben Stelle („rolle“).
-    var y = Math.round(bildDecke.scrollTop);
-    if (bildAn && y > 0 && seiteQuelle) { try { seiteQuelle.postMessage({ dashboardRahmen: 1, was: 'rolle', y: y }, seiteHerkunft); } catch (e) {} }
-    bildAn = false;
-    bildDecke.style.pointerEvents = 'none';
-    standLeiste.style.display = 'none';
-    var lauf = bildLauf;
-    var fertig = function () {
-      if (bildAn || lauf !== bildLauf) return;
-      bildDecke.style.display = 'none'; bildDecke.style.pointerEvents = ''; bildDecke.classList.remove('weg'); bildDecke.scrollTop = 0;
-      bildRahmen.style.display = 'none'; bildRahmen.removeAttribute('srcdoc');
-      bildFest.style.display = 'none'; bildFest.removeAttribute('srcdoc'); bildFest.classList.remove('weg');
-    };
-    if (sanft) { bildDecke.classList.add('weg'); bildFest.classList.add('weg'); setTimeout(fertig, 260); } else fertig();
+  /** Tauscht den Rahmen des Bilds gegen einen frischen, leeren und unsichtbaren aus. Ein Rahmen, der nur einmal gefüllt und dann
+      entfernt wird, hinterlässt keinen Schritt im Verlauf des Browsers. Füllte man denselben Rahmen immer wieder neu, bräuchte
+      die Zurück-Taste für jedes gezeigte Bild einen Druck mehr. */
+  function bildFrisch() {
+    var neu = document.createElement('iframe');
+    neu.id = 'bild';
+    neu.title = bildRahmen.title;
+    neu.setAttribute('sandbox', 'allow-same-origin');
+    neu.setAttribute('tabindex', '-1');
+    neu.style.display = 'none';
+    try { bildRahmen.parentNode.replaceChild(neu, bildRahmen); } catch (e) { return; }
+    bildRahmen = neu;
   }
 
-  // Wischen scrollt im Bild wie auf der echten Seite (seit v573, Mircos Wunsch: es soll sich wie eine App anfühlen, auch mit älterem
-  // Stand). Ein Tipp (weniger als 12 Pixel Bewegung): Vor „da“ nur der Hinweis „Gleich bereit“. Ist die echte Seite schon da, weicht
-  // das Bild sofort, und seit v571 geht die Stelle des Tipps an die Seite („tipp“, mit der Scrollhöhe sy). Sie scrollt an dieselbe
-  // Stelle und drückt dort den Knopf, wenn er nur etwas öffnet (etwa „Privat“), siehe rahmenTippWeiter in Index.html.
-  bildDecke.addEventListener('pointerdown', function (ev) {
-    if (ev.button > 0) return;
-    tippStart = { x: ev.clientX, y: ev.clientY };
-  });
-  bildDecke.addEventListener('pointermove', function (ev) {
-    if (tippStart && Math.abs(ev.clientX - tippStart.x) + Math.abs(ev.clientY - tippStart.y) > 12) tippStart = null;
-  });
-  // Der Browser übernimmt das Wischen zum Scrollen: kein Tipp.
-  bildDecke.addEventListener('pointercancel', function () { tippStart = null; });
-  bildDecke.addEventListener('pointerup', function () {
-    var t = tippStart;
-    tippStart = null;
-    if (!t) return;
-    if (!seiteDa) {
-      gleichHinweis.style.display = 'block';
-      clearTimeout(gleichUhr);
-      gleichUhr = setTimeout(function () { gleichHinweis.style.display = 'none'; }, 1600);
+  /** Wie weit im Bild gescrollt wurde. Ohne Bild oder ohne Zugriff 0. */
+  function bildRollStand() {
+    try { return Math.max(0, Math.round(bildRahmen.contentWindow.scrollY || 0)); } catch (e) { return 0; }
+  }
+
+  /** Ein fester Punkt für die Übergabe an die echte Seite: das innerste Element mit eigener Kennung (id), das im Bild gerade im
+      oberen Teil zu sehen ist, und wie weit es vom oberen Rand entfernt steht. Die echte Seite richtet sich daran aus. So stimmt
+      die Stelle auch dann, wenn die echte Seite weiter oben etwas anders aufgebaut ist als das Bild (ein Hinweis mehr, eine Zeile
+      weniger), die reine Scrollhöhe läge dann daneben. Fest stehende Leisten zählen nicht. */
+  function bildAnker() {
+    var doc, win, gefunden = null;
+    try { doc = bildRahmen.contentDocument; win = bildRahmen.contentWindow; } catch (e) { return null; }
+    if (!doc || !win || !doc.documentElement || !doc.body) return null;
+    try {
+      doc.documentElement.removeAttribute('data-nur-ansehen');
+      doc.body.removeAttribute('inert');
+      var b = window.innerWidth, h = window.innerHeight;
+      var punkte = [[b / 2, h * 0.3], [b / 2, h * 0.5], [b * 0.25, h * 0.4], [b / 2, h * 0.7]];
+      for (var i = 0; i < punkte.length && !gefunden; i++) {
+        var kandidat = null, fest = false;
+        for (var el = doc.elementFromPoint(punkte[i][0], punkte[i][1]); el && el !== doc.body && el !== doc.documentElement; el = el.parentElement) {
+          var lage = win.getComputedStyle(el).position;
+          if (lage === 'fixed' || lage === 'sticky') { fest = true; break; }
+          if (!kandidat && el.id && /^[A-Za-z][A-Za-z0-9_:-]{0,60}$/.test(el.id) && doc.querySelectorAll('[id="' + el.id + '"]').length === 1) kandidat = el;
+        }
+        if (kandidat && !fest) gefunden = { id: kandidat.id, top: Math.round(kandidat.getBoundingClientRect().top) };
+      }
+    } catch (e) { gefunden = null; }
+    try { doc.documentElement.setAttribute('data-nur-ansehen', ''); doc.body.setAttribute('inert', ''); } catch (e2) {}
+    return gefunden;
+  }
+
+  /** Nimmt das Bild weg, sanft (überblenden) oder sofort. Sanft und gescrollt: Erst springt die echte Seite an dieselbe Stelle
+      („rollen“, Antwort „gerollt“, höchstens ROLL_WARTEN ms), dann blendet das Bild aus, so springt nichts. ohneRollen: nach einem
+      weitergereichten Tipp, dann zeigt die Seite schon etwas anderes. */
+  function bildWeg(sanft, ohneRollen) {
+    clearTimeout(bildWecker);
+    if (rollWarten) { clearTimeout(rollWarten.uhr); rollWarten = null; }
+    if (!bildAn && bildRahmen.style.display !== 'block') return;
+    var y = sanft && !ohneRollen && bildAn ? bildRollStand() : 0;
+    var anker = y > 2 ? bildAnker() : null;
+    bildAn = false;
+    standLeiste.style.display = 'none';
+    var lauf = bildLauf;
+    var fertig = function () { if (bildAn || lauf !== bildLauf) return; bildFrisch(); };
+    var blenden = function () { if (bildAn || lauf !== bildLauf) return; bildRahmen.classList.add('weg'); setTimeout(fertig, 260); };
+    if (!sanft) { fertig(); return; }
+    if (y > 2 && aktiv && aktiv.da) {
+      var nr = ++rollNr;
+      var w = rollWarten = { nr: nr, uhr: 0, weiter: function () { if (rollWarten !== w) return; clearTimeout(w.uhr); rollWarten = null; blenden(); } };
+      w.uhr = setTimeout(w.weiter, ROLL_WARTEN);
+      if (!senden(aktiv, { was: 'rollen', y: y, nr: nr, id: anker ? anker.id : '', top: anker ? anker.top : 0 })) w.weiter();
       return;
     }
-    var sy = Math.round(bildDecke.scrollTop);
-    bildWeg(false);
-    if (seiteQuelle) { try { seiteQuelle.postMessage({ dashboardRahmen: 1, was: 'tipp', x: t.x, y: t.y, sy: sy, w: window.innerWidth, h: window.innerHeight }, seiteHerkunft); } catch (err) {} }
+    blenden();
+  }
+
+  /* Tipp auf das Bild, seit v575 nach Kennung statt nach Stelle (v571 schickte x und y, das ging nur, solange nichts verschoben war).
+     Diese Seite hört im Dokument des Bilds mit. Das geht, weil der Rahmen allow-same-origin hat, im Bild selbst läuft dabei kein
+     Skript. Ein Wischen (der Browser scrollt, es kommt pointercancel) oder eine Bewegung über 12 Pixel ist kein Tipp. */
+  function bildLauschen() {
+    var doc, win;
+    try { doc = bildRahmen.contentDocument; win = bildRahmen.contentWindow; } catch (e) { return; }
+    if (!doc || !win) return;
+    var start = null;
+    doc.addEventListener('pointerdown', function (ev) {
+      start = (ev.isPrimary === false || ev.button > 0) ? null : { x: ev.clientX, y: ev.clientY, t: Date.now(), sy: win.scrollY || 0 };
+    }, true);
+    doc.addEventListener('pointerup', function (ev) {
+      var s = start;
+      start = null;
+      if (!s || Date.now() - s.t > 800 || Math.abs(ev.clientX - s.x) + Math.abs(ev.clientY - s.y) > 12 || Math.abs((win.scrollY || 0) - s.sy) > 4) return;
+      bildTipp(ev.clientX, ev.clientY);
+    }, true);
+    doc.addEventListener('pointercancel', function () { start = null; }, true);
+  }
+  function druckWeg() {
+    try { var alt = bildRahmen.contentDocument.querySelectorAll('[data-gedrueckt]'); for (var i = 0; i < alt.length; i++) alt[i].removeAttribute('data-gedrueckt'); } catch (e) {}
+  }
+  function wunschWeg() { wunsch = null; druckWeg(); }
+  /** Was liegt an der Stelle? Für den Blick hebt die Rahmenseite die Stilllegung einen Wimpernschlag auf (ohne Zeichnen dazwischen). */
+  function bildTreffer(x, y) {
+    var doc, el = null;
+    try { doc = bildRahmen.contentDocument; } catch (e) { return null; }
+    if (!doc || !doc.documentElement) return null;
+    try {
+      doc.documentElement.removeAttribute('data-nur-ansehen');
+      if (doc.body) doc.body.removeAttribute('inert');
+      el = doc.elementFromPoint(x, y);
+    } catch (e) { el = null; }
+    try { doc.documentElement.setAttribute('data-nur-ansehen', ''); if (doc.body) doc.body.setAttribute('inert', ''); } catch (e2) {}
+    return el;
+  }
+  function bildTipp(x, y) {
+    if (!bildAn) return;
+    var el = bildTreffer(x, y);
+    var ziel = el && el.closest ? el.closest('[data-tipp]') : null;
+    wunschWeg();
+    // Kein öffnender Knopf an der Stelle: Der Tipp tut still nichts. Ein vorher gemerkter Wunsch ist damit zurückgenommen.
+    if (!ziel) { standSetzen(''); return; }
+    var k = ziel.getAttribute('data-tipp') || '', gehe = ziel.getAttribute('data-tipp-gehe');
+    // Führt der Knopf auf eine andere Seite des Dashboards, wechselt die Rahmenseite sofort dorthin.
+    if (gehe !== null && /^[a-z-]{0,30}$/.test(gehe)) {
+      var a = lesen();
+      if (a) { if (aktiv) wegMerken(aktiv.datei, gehe); ortMerken(gehe, true); zeigen(a, gehe); }
+      return;
+    }
+    if (k.length < 3 || k.length > 240) { standSetzen(''); return; }
+    try { ziel.setAttribute('data-gedrueckt', ''); } catch (e) {}
+    wunsch = { k: k, zeit: Date.now() };
+    standSetzen('Öffnet sich gleich …');
+    wunschSenden();
+  }
+  /** Reicht einen gemerkten Tipp an die echte Seite, sobald sie da ist. Sie drückt den Knopf mit dieser Kennung und antwortet „getippt“. */
+  function wunschSenden() {
+    if (!wunsch || !aktiv || !aktiv.da || aktiv.anmeldung) return;
+    var w = wunsch;
+    wunsch = null;
+    if (Date.now() - w.zeit > WUNSCH_MAX) { druckWeg(); standSetzen(''); return; }
+    tippLauf = bildLauf;
+    senden(aktiv, { was: 'tipp', k: w.k });
+  }
+
+  /* ================= Gemerkte Wege und Vorladen, seit v575 =================
+     Wer von einer Seite regelmäßig auf dieselbe andere wechselt (etwa von der Schnellseite Aufgaben zur Startseite), bekommt diese
+     Seite ein paar Sekunden nach dem Öffnen unsichtbar vorgeladen. Der Wechsel geht dann schon beim ersten Mal ohne Wartezeit.
+     Dafür zählt die Rahmenseite auf diesem Gerät mit, wohin von wo gewechselt wird (nur Namen von Seiten, keine Inhalte). Das ist
+     eine Gewohnheit des Geräts wie ein Zwischenspeicher, kein Speicher des Dashboards, es geht nichts verloren, wenn es fehlt.
+     Vorgeladen wird höchstens zweimal je Start, nie im Datensparmodus, und nur, wenn der Weg mindestens zweimal öfter genutzt als
+     umsonst vorgeladen wurde (jedes Vorladen kostet einen halben Punkt, jeder echte Wechsel bringt einen). */
+  var WEGE_SPEICHER = 'dashboard_rahmen_wege', VORLADEN_NACH = 4000, VORLADEN_AB = 2, VORLADEN_MAX = 2;
+  var vorladenUhr = 0, vorladenZahl = 0;
+  function wegeLesen() {
+    try { var w = JSON.parse(localStorage.getItem(WEGE_SPEICHER) || '{}'); return w && typeof w === 'object' && !Array.isArray(w) ? w : {}; } catch (e) { return {}; }
+  }
+  function wegeSchreiben(w) { try { localStorage.setItem(WEGE_SPEICHER, JSON.stringify(w)); } catch (e) {} }
+  function wegeVergessen() { try { localStorage.removeItem(WEGE_SPEICHER); } catch (e) {} }
+  /** Zählt einen Wechsel von einer Seitendatei zu einem tab (plus) oder ein Vorladen (minus). */
+  function wegMerken(vonDatei, nachTab, punkte) {
+    if (typeof nachTab !== 'string' || !/^[a-z-]{0,30}$/.test(nachTab) || dateiVon(nachTab) === vonDatei) return;
+    var w = wegeLesen(), ziel = nachTab || 'start';
+    var z = w[vonDatei] && typeof w[vonDatei] === 'object' ? w[vonDatei] : (w[vonDatei] = {});
+    z[ziel] = Math.max(0, Math.min(12, (Number(z[ziel]) || 0) + (punkte === undefined ? 1 : punkte)));
+    wegeSchreiben(w);
+  }
+  function vorladenBald() {
+    clearTimeout(vorladenUhr);
+    vorladenUhr = setTimeout(vorladen, VORLADEN_NACH);
+  }
+  function vorladen() {
+    try {
+      if (!aktiv || !aktiv.bereit || aktiv.anmeldung || bildAn || frage || vorladenZahl >= VORLADEN_MAX || document.visibilityState !== 'visible') return;
+      if (navigator.connection && navigator.connection.saveData) return;
+      var a = lesen();
+      if (!a) return;
+      var z = wegeLesen()[aktiv.datei] || {}, bester = null, besterWert = 0;
+      for (var ziel in z) {
+        var tab = ziel === 'start' ? '' : ziel, wert = Number(z[ziel]) || 0;
+        if (!/^[a-z-]{0,30}$/.test(tab) || wert < VORLADEN_AB || becken[dateiVon(tab)]) continue;
+        if (bester === null || wert > besterWert) { bester = tab; besterWert = wert; }
+      }
+      if (bester === null) return;
+      vorladenZahl++;
+      wegMerken(aktiv.datei, bester, -0.5);
+      rahmenNeu(a, bester, true);
+    } catch (e) {}
+  }
+
+  /** Notausgang: holt die Rahmenseite frisch von GitHub. Meldet den Service Worker ab, leert seinen Zwischenspeicher und lädt neu.
+      Adresse, Bilder und Dashboard bleiben, wie sie sind. Dasselbe macht der Zusatz ?frisch=1 in der Adresse (auch im Worker selbst). */
+  function frischHolen() {
+    var weiter = function () { try { location.replace(location.pathname + '?frisch=1'); } catch (e) { location.reload(); } };
+    var schritte = [];
+    try { if ('serviceWorker' in navigator) schritte.push(navigator.serviceWorker.getRegistrations().then(function (l) { return Promise.all(l.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+    try { if (window.caches) schritte.push(caches.keys().then(function (n) { return Promise.all(n.filter(function (x) { return x.indexOf('rahmen-') === 0; }).map(function (x) { return caches.delete(x); })); })); } catch (e) {}
+    var uhr = setTimeout(weiter, 2500);
+    Promise.all(schritte).catch(function () {}).then(function () { clearTimeout(uhr); weiter(); });
+  }
+
+  // Wache Seiten, die zu lange versteckt lagen, fliegen raus, wenn die App wieder nach vorn kommt.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    for (var d in becken) { if (becken[d] !== aktiv && Date.now() - becken[d].versteckt > WACH_MAX) rahmenWeg(becken[d]); }
   });
 
   aufraeumen();
