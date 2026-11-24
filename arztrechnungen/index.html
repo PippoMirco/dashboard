@@ -186,7 +186,7 @@
     // Seit v566: Messung beginnt. Beim ersten Öffnen zählt die Zeit ab dem Antippen (Start dieser Seite), danach ab dem Seitenwechsel.
     messung = { tab: tab, start: ersteMessung ? 0 : performance.now(), da: -1, bild: -1, bereit: -1 };
     ersteMessung = false;
-    seiteDa = false;
+    seiteDa = false; seiteQuelle = null; seiteHerkunft = '';
     bildZeigen(tab);
     // rahmen=1 sagt dem Dashboard, dass es im Rahmen läuft.
     var wz = tab === 'wohnzimmer' ? wzLesen() : '';
@@ -234,6 +234,7 @@
     if (d.was === 'da') {
       clearTimeout(wecker); hilfe.style.display = 'none';
       seiteDa = true;
+      if (ausUnseremRahmen(e.source)) { seiteQuelle = e.source; seiteHerkunft = e.origin; }
       if (messung && messung.da < 0) messung.da = Math.round(performance.now() - messung.start);
       try { e.source.postMessage({ dashboardRahmen: 1, was: 'ok', seite: location.origin + WURZEL, bilder: BILDER, css: cssBekannt }, e.origin); } catch (err) {}
       // Die Anmeldeseite heißt: Dieses Gerät ist gerade nicht angemeldet. Dann zeigt es auch keine alten Bilder mehr.
@@ -286,8 +287,8 @@
      ihre Gestaltung). Hier wird je Seite (tab) das letzte Bild gemerkt und beim nächsten Öffnen sofort gezeigt, während das echte
      Dashboard dahinter lädt. Meldet es „bereit“, blendet das Bild aus. Regeln:
      - Nur zum Ansehen. Es läuft in einem Rahmen mit sandbox ohne jede Erlaubnis, darüber liegt eine Decke, die jeden Tipp abfängt.
-       Vor „da“ kommt nur der Hinweis „Gleich bereit“, danach weicht das Bild sofort der echten Seite. So wird nie etwas doppelt
-       oder auf einem alten Stand gebucht.
+       Vor „da“ kommt nur der Hinweis „Gleich bereit“, danach weicht das Bild sofort der echten Seite, und ein Knopf, der nur etwas
+       öffnet, wird dort gedrückt (seit v571). So wird nie etwas doppelt oder auf einem alten Stand gebucht.
      - Gespeichert in IndexedDB dieses Geräts, verschlüsselt mit AES-GCM. Der Schlüssel liegt nicht auslesbar daneben. Das schützt
        die Dateien auf dem Gerät, nicht vor einem Skript derselben Herkunft (pippomirco.github.io): Darum darf es dort keine weiteren
        Seiten mit Skripten geben (geprüft am 24.11.2026: es gibt nur das Repo dashboard).
@@ -300,6 +301,8 @@
   var gleichHinweis = document.getElementById('gleich');
   var BILD_DB = 'dashboard_sofortbild', BILD_TAGE = 14, BILD_MAX = 1000000, CSS_MAX = 1500000;
   var messung = null, ersteMessung = true, seiteDa = false;
+  // Seit v571: wohin ein Tipp auf das Bild weitergereicht wird (die Seite, die „da“ gemeldet hat, nur aus dem eigenen Rahmen).
+  var seiteQuelle = null, seiteHerkunft = '', tippStart = null;
   var bildAn = false, bildLauf = 0, bildWecker = 0, gleichUhr = 0;
   // Seit v568: Kommt nach „da“ so lange kein „bereit“, weicht das Bild trotzdem (vorher 10 Sekunden, am 24.11.2026 stand das Bild so
   // auf der Startseite rund 17 Sekunden). Die echte Seite ist dann schon bedienbar und lädt höchstens noch Zahlen nach.
@@ -507,14 +510,27 @@
     if (sanft) { bildRahmen.classList.add('weg'); setTimeout(fertig, 260); } else fertig();
   }
 
-  // Ein Tipp auf das Bild: Ist die echte Seite schon da, weicht das Bild sofort. Sonst nur der Hinweis „Gleich bereit“.
+  // Ein Tipp auf das Bild: Vor „da“ nur der Hinweis „Gleich bereit“. Ist die echte Seite schon da, weicht das Bild beim Loslassen
+  // sofort, und seit v571 geht die Stelle des Tipps an die Seite („tipp“). Sie drückt dort den Knopf, wenn er nur etwas öffnet
+  // (etwa „Privat“), siehe rahmenTippWeiter in Index.html. Wer wischt statt tippt (mehr als 12 Pixel), nimmt nur das Bild weg.
   bildDecke.addEventListener('pointerdown', function (ev) {
     ev.preventDefault();
-    if (seiteDa) { bildWeg(true); return; }
+    if (seiteDa) { tippStart = { x: ev.clientX, y: ev.clientY }; return; }
     gleichHinweis.style.display = 'block';
     clearTimeout(gleichUhr);
     gleichUhr = setTimeout(function () { gleichHinweis.style.display = 'none'; }, 1600);
   });
+  bildDecke.addEventListener('pointermove', function (ev) {
+    if (tippStart && Math.abs(ev.clientX - tippStart.x) + Math.abs(ev.clientY - tippStart.y) > 12) { tippStart = null; bildWeg(true); }
+  });
+  bildDecke.addEventListener('pointerup', function (ev) {
+    var t = tippStart;
+    tippStart = null;
+    if (!t || !seiteDa) return;
+    bildWeg(false);
+    if (seiteQuelle) { try { seiteQuelle.postMessage({ dashboardRahmen: 1, was: 'tipp', x: t.x, y: t.y, w: window.innerWidth, h: window.innerHeight }, seiteHerkunft); } catch (err) {} }
+  });
+  bildDecke.addEventListener('pointercancel', function () { if (tippStart) { tippStart = null; bildWeg(true); } });
 
   aufraeumen();
 
