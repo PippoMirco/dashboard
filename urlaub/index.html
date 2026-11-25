@@ -787,7 +787,7 @@
       var s = start;
       start = null;
       if (!s || Date.now() - s.t > 800 || Math.abs(ev.clientX - s.x) + Math.abs(ev.clientY - s.y) > 12 || Math.abs((win.scrollY || 0) - s.sy) > 4) return;
-      bildTipp(ev.clientX, ev.clientY);
+      bildTipp(ev.clientX, ev.clientY, ev.ctrlKey || ev.metaKey);
     }, true);
     doc.addEventListener('pointercancel', function () { start = null; }, true);
   }
@@ -808,7 +808,7 @@
     try { doc.documentElement.setAttribute('data-nur-ansehen', ''); if (doc.body) doc.body.setAttribute('inert', ''); } catch (e2) {}
     return el;
   }
-  function bildTipp(x, y) {
+  function bildTipp(x, y, neuerTab) {
     if (!bildAn) return;
     var el = bildTreffer(x, y);
     var ziel = el && el.closest ? el.closest('[data-tipp]') : null;
@@ -818,11 +818,16 @@
     var k = ziel.getAttribute('data-tipp') || '', gehe = ziel.getAttribute('data-tipp-gehe');
     // Führt der Knopf auf eine andere Seite des Dashboards, wechselt die Rahmenseite sofort dorthin.
     if (gehe !== null && /^[a-z-]{0,30}$/.test(gehe)) {
+      // Seit v580: Mit Strg (Mac: Cmd) öffnet sich das Ziel in einem neuen Tab, wie auf der echten Seite. Diese Seite bleibt, wie sie ist.
+      if (neuerTab) { try { window.open(ORTE[gehe] ? WURZEL + ORTE[gehe].ordner : WURZEL + (gehe ? '?tab=' + gehe : ''), '_blank'); } catch (e) {} standSetzen(''); return; }
       var a = lesen();
       if (a) { if (aktiv) wegMerken(aktiv.datei, gehe); ortMerken(gehe, true); zeigen(a, gehe); }
       return;
     }
     if (k.length < 3 || k.length > 240) { standSetzen(''); return; }
+    // Strg+Klick auf einen Knopf, der innerhalb der Seite springt: Das Ziel kennt nur die echte Seite. Der Klick tut hier still
+    // nichts, statt die Seite umzuschalten. Ist die echte Seite da, öffnet derselbe Klick dort den neuen Tab.
+    if (neuerTab) { standSetzen(''); return; }
     try { ziel.setAttribute('data-gedrueckt', ''); } catch (e) {}
     wunsch = { k: k, zeit: Date.now() };
     standSetzen('Öffnet sich gleich …');
