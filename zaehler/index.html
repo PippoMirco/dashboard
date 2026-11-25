@@ -493,7 +493,10 @@
   var WUNSCH_MAX = 20000, ROLL_WARTEN = 160;
   // Seit v568: Kommt nach „da“ so lange kein „bereit“, weicht das Bild trotzdem (vorher 10 Sekunden, am 24.11.2026 stand das Bild so
   // auf der Startseite rund 17 Sekunden). Die echte Seite ist dann schon bedienbar und lädt höchstens noch Zahlen nach.
-  var BILD_NACH_DA = 3000;
+  // Seit v576: 17 statt 3 Sekunden. Drei Sekunden waren am echten Server oft kürzer als der große Abruf des Dashboards, das Bild wich
+  // dann und man sah ein bis zwei Sekunden die leere Seite, bevor die Zahlen kamen. Die Seite selbst meldet „bereit“ spätestens
+  // 15 Sekunden nach dem Laden, diese Grenze hier ist nur das Netz darunter (ältere Fassung, Seite hängt ganz).
+  var BILD_NACH_DA = 17000;
   var cssBekannt = [];
   var dbVersprechen = null, schluesselVersprechen = null;
   // Seit v575: Nach „vergessen“ oder der Anmeldeseite werden keine Bilder mehr angenommen, bis eine Seite frisch und angemeldet
