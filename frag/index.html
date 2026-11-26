@@ -118,8 +118,12 @@
   var WZ_SPEICHER = 'dashboard_wohnzimmer_schluessel';
   var WZ_MUSTER = /^[A-Za-z0-9]{24,64}$/;
   function wzLesen() { try { var w = localStorage.getItem(WZ_SPEICHER) || ''; return WZ_MUSTER.test(w) ? w : ''; } catch (e) { return ''; } }
+  /* Seit v591: Schlüssel der Hörspiel-Seite der Kinder. Er schaltet nur die Seite „kinderhoerspiele“ frei, genauso wie der der
+     Wohnzimmer-Anzeige, und kommt nur über den Link zum Einrichten (#…?kh=…). */
+  var KH_SPEICHER = 'dashboard_kinder_schluessel';
+  function khLesen() { try { var w = localStorage.getItem(KH_SPEICHER) || ''; return WZ_MUSTER.test(w) ? w : ''; } catch (e) { return ''; } }
   function schreiben(v) { try { localStorage.setItem(SCHLUESSEL, v); return true; } catch (e) { return false; } }
-  function loeschen() { try { localStorage.removeItem(SCHLUESSEL); localStorage.removeItem(WZ_SPEICHER); } catch (e) {} }
+  function loeschen() { try { localStorage.removeItem(SCHLUESSEL); localStorage.removeItem(WZ_SPEICHER); localStorage.removeItem(KH_SPEICHER); } catch (e) {} }
 
   /** Macht aus einer eingefügten Adresse die reine Adresse der Webapp. Alles hinter dem Fragezeichen (auch ein Zugangscode) fällt weg. */
   function saeubern(roh) {
@@ -155,9 +159,9 @@
      jede Verknüpfung auf die Startseite des Dashboards (Mircos Hinweis). */
   // Seit v460 auch die Einkaufsliste (einkauf/), Mircos Festlegung: jede eigene Seite bekommt eine eigene Adresse und ein eigenes Symbol.
   /* ORTE-ANFANG: Diese Zeile schreibt node pruefung/rahmen/symbole.js aus pruefung/rahmen/orte.js, nicht von Hand ändern. Seit v468 hat jede Seite des Dashboards einen eigenen Ordner. */
-  var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' }, einkauf: { ordner: 'einkauf/', name: 'Einkauf' }, frag: { ordner: 'frag/', name: 'Fragen' }, wohnzimmer: { ordner: 'wohnzimmer/', name: 'Kommandozentrale' }, nachrichten: { ordner: 'nachrichten/', name: 'Nachrichten' }, geldverschiebung: { ordner: 'konten/', name: 'Konten' }, vermoegen: { ordner: 'vermoegen/', name: 'Vermögen' }, depots: { ordner: 'depots/', name: 'Depots' }, haushalt: { ordner: 'haushalt/', name: 'Haushalt' }, urlaub: { ordner: 'urlaub/', name: 'Urlaub' }, jahre: { ordner: 'jahre/', name: 'Jahre' }, arztrechnungen: { ordner: 'arztrechnungen/', name: 'Arzt' }, archive: { ordner: 'archiv/', name: 'Archiv' }, vertraege: { ordner: 'vertraege/', name: 'Verträge' }, steuer: { ordner: 'steuer/', name: 'Steuer' }, newsletter: { ordner: 'newsletter/', name: 'Newsletter' }, trading: { ordner: 'trading/', name: 'Trading' }, markt: { ordner: 'boerse/', name: 'Börse' }, krypto: { ordner: 'krypto/', name: 'Krypto' }, hauskonto: { ordner: 'hauskonto/', name: 'Hauskonto' }, energie: { ordner: 'energie/', name: 'Strom & Gas' }, zaehler: { ordner: 'zaehler/', name: 'Zähler' }, fahrzeuge: { ordner: 'auto/', name: 'Auto' }, vcds: { ordner: 'vcds/', name: 'VCDS' }, calendar: { ordner: 'termine/', name: 'Termine' }, tickets: { ordner: 'tickets/', name: 'Tickets' }, hoerspiele: { ordner: 'hoerspiele/', name: 'Hörspiele' }, medien: { ordner: 'radio/', name: 'Radio' }, privatnotizen: { ordner: 'notizen/', name: 'Notizen' }, links: { ordner: 'links/', name: 'Links' }, dokumente: { ordner: 'dokumente/', name: 'Dokumente' }, dokusuche: { ordner: 'dokusuche/', name: 'Doku-Suche' }, aufgaben: { ordner: 'aufgabenliste/', name: 'Aufgabenliste' }, tasks: { ordner: 'tasks/', name: 'Google Tasks' }, hilfe: { ordner: 'hilfe/', name: 'Hilfe' }, tagebuch: { ordner: 'tagebuch/', name: 'Tagebuch' }, wissen: { ordner: 'wissen/', name: 'Wissen' }, vokabeln: { ordner: 'vokabeln/', name: 'Vokabeln' }, redewendungen: { ordner: 'redewendungen/', name: 'Redewendungen' }, training: { ordner: 'training/', name: 'Training' }, form: { ordner: 'form/', name: 'Form' }, essen: { ordner: 'essen/', name: 'Essen' }, gewicht: { ordner: 'gewicht/', name: 'Gewicht' }, medikamente: { ordner: 'tabletten/', name: 'Tabletten' }, rezepte: { ordner: 'rezepte/', name: 'Rezepte' } };
-  var BILDER = ['', 'schnell', 'schnellarbeit', 'einkauf', 'geldverschiebung', 'haushalt', 'urlaub', 'vertraege', 'trading', 'hoerspiele', 'medien', 'training', 'form', 'medikamente'];
-  var EIGEN = ['schnell', 'schnellarbeit', 'einkauf', 'frag', 'wohnzimmer', 'nachrichten', 'medikamente'];
+  var ORTE = { schnell: { ordner: 'aufgaben/', name: 'Aufgaben' }, schnellarbeit: { ordner: 'arbeit/', name: 'Arbeit' }, einkauf: { ordner: 'einkauf/', name: 'Einkauf' }, frag: { ordner: 'frag/', name: 'Fragen' }, wohnzimmer: { ordner: 'wohnzimmer/', name: 'Kommandozentrale' }, nachrichten: { ordner: 'nachrichten/', name: 'Nachrichten' }, geldverschiebung: { ordner: 'konten/', name: 'Konten' }, vermoegen: { ordner: 'vermoegen/', name: 'Vermögen' }, depots: { ordner: 'depots/', name: 'Depots' }, haushalt: { ordner: 'haushalt/', name: 'Haushalt' }, urlaub: { ordner: 'urlaub/', name: 'Urlaub' }, jahre: { ordner: 'jahre/', name: 'Jahre' }, arztrechnungen: { ordner: 'arztrechnungen/', name: 'Arzt' }, archive: { ordner: 'archiv/', name: 'Archiv' }, vertraege: { ordner: 'vertraege/', name: 'Verträge' }, steuer: { ordner: 'steuer/', name: 'Steuer' }, newsletter: { ordner: 'newsletter/', name: 'Newsletter' }, trading: { ordner: 'trading/', name: 'Trading' }, markt: { ordner: 'boerse/', name: 'Börse' }, krypto: { ordner: 'krypto/', name: 'Krypto' }, hauskonto: { ordner: 'hauskonto/', name: 'Hauskonto' }, energie: { ordner: 'energie/', name: 'Strom & Gas' }, zaehler: { ordner: 'zaehler/', name: 'Zähler' }, fahrzeuge: { ordner: 'auto/', name: 'Auto' }, vcds: { ordner: 'vcds/', name: 'VCDS' }, calendar: { ordner: 'termine/', name: 'Termine' }, tickets: { ordner: 'tickets/', name: 'Tickets' }, hoerspiele: { ordner: 'hoerspiele/', name: 'Hörspiele' }, medien: { ordner: 'radio/', name: 'Radio' }, privatnotizen: { ordner: 'notizen/', name: 'Notizen' }, links: { ordner: 'links/', name: 'Links' }, dokumente: { ordner: 'dokumente/', name: 'Dokumente' }, dokusuche: { ordner: 'dokusuche/', name: 'Doku-Suche' }, aufgaben: { ordner: 'aufgabenliste/', name: 'Aufgabenliste' }, tasks: { ordner: 'tasks/', name: 'Google Tasks' }, hilfe: { ordner: 'hilfe/', name: 'Hilfe' }, tagebuch: { ordner: 'tagebuch/', name: 'Tagebuch' }, wissen: { ordner: 'wissen/', name: 'Wissen' }, vokabeln: { ordner: 'vokabeln/', name: 'Vokabeln' }, redewendungen: { ordner: 'redewendungen/', name: 'Redewendungen' }, training: { ordner: 'training/', name: 'Training' }, form: { ordner: 'form/', name: 'Form' }, essen: { ordner: 'essen/', name: 'Essen' }, gewicht: { ordner: 'gewicht/', name: 'Gewicht' }, medikamente: { ordner: 'tabletten/', name: 'Tabletten' }, kinderhoerspiele: { ordner: 'kinder-hoerspiele/', name: 'Hörspiele' }, rezepte: { ordner: 'rezepte/', name: 'Rezepte' } };
+  var BILDER = ['', 'schnell', 'schnellarbeit', 'einkauf', 'geldverschiebung', 'haushalt', 'urlaub', 'vertraege', 'trading', 'hoerspiele', 'medien', 'training', 'form', 'medikamente', 'kinderhoerspiele'];
+  var EIGEN = ['schnell', 'schnellarbeit', 'einkauf', 'frag', 'wohnzimmer', 'nachrichten', 'medikamente', 'kinderhoerspiele'];
   /* ORTE-ENDE */
   // Der Hauptordner: die Adresse ohne den Ordner einer Seite am Ende. Verglichen wird mit dem Schrägstrich davor, damit
   // „…/aufgabenliste/“ nicht für „…/liste/“ gehalten würde.
@@ -235,7 +239,8 @@
     el.setAttribute('aria-hidden', 'true');
     // rahmen=1 sagt dem Dashboard, dass es im Rahmen läuft.
     var wz = tab === 'wohnzimmer' ? wzLesen() : '';
-    el.src = adresse + '?rahmen=1' + (tab ? '&tab=' + encodeURIComponent(tab) : '') + (code ? '&code=' + encodeURIComponent(code) : '') + (wz ? '&wz=' + wz : '');
+    var kh = tab === 'kinderhoerspiele' ? khLesen() : '';
+    el.src = adresse + '?rahmen=1' + (tab ? '&tab=' + encodeURIComponent(tab) : '') + (code ? '&code=' + encodeURIComponent(code) : '') + (wz ? '&wz=' + wz : '') + (kh ? '&kh=' + kh : '');
     var f = becken[datei] = { el: el, datei: datei, tab: tab, da: false, bereit: false, quelle: null, herkunft: '', anmeldung: false, versteckt: Date.now(), vorab: !!vorab };
     document.body.insertBefore(el, bildRahmen);
     return f;
@@ -917,9 +922,11 @@
   // Seit v481: Der Link zum Einrichten der Wohnzimmer-Anzeige hängt ?wz=… an die Adresse. Der Schlüssel wird hier gemerkt,
   // die Adresse selbst bleibt ohne ihn (saeubern wirft alles hinter dem ? weg).
   var wzAusLink = /[?&]wz=([A-Za-z0-9]{24,64})(?:&|$)/.exec(hashRoh);
+  var khAusLink = /[?&]kh=([A-Za-z0-9]{24,64})(?:&|$)/.exec(hashRoh);
   if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
   if (ausLink) schreiben(ausLink);
   if (ausLink && wzAusLink) { try { localStorage.setItem(WZ_SPEICHER, wzAusLink[1]); } catch (e) {} }
+  if (ausLink && khAusLink) { try { localStorage.setItem(KH_SPEICHER, khAusLink[1]); } catch (e) {} }
 
   var adresse = saeubern(lesen());
   // Die Adresse oben bekommt gleich ihre feste Form (…/dashboard/?tab=schnell wird zu …/dashboard/aufgaben/).
