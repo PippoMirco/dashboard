@@ -924,6 +924,15 @@
   var wzAusLink = /[?&]wz=([A-Za-z0-9]{24,64})(?:&|$)/.exec(hashRoh);
   var khAusLink = /[?&]kh=([A-Za-z0-9]{24,64})(?:&|$)/.exec(hashRoh);
   if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+  // Seit v607 (Fable Sicherheit W5): Ist das Gerät schon eingerichtet und der Link nennt eine andere Adresse, nicht still
+  // umstellen, sondern fragen. Sonst könnte ein fremder Link die vertraute App auf eine fremde Seite umbiegen.
+  var bisher = saeubern(lesen());
+  if (ausLink && bisher && bisher !== ausLink) {
+    var ende = function (a) { return '…' + a.replace(/\/exec$/, '').slice(-8); };
+    var ja = false;
+    try { ja = window.confirm('Dieses Gerät ist schon mit deinem Dashboard eingerichtet (' + ende(bisher) + '). Der Link will auf eine andere Adresse umstellen (' + ende(ausLink) + '). Nur bestätigen, wenn du den Link gerade selbst aus deinem Dashboard geholt hast.'); } catch (e) { ja = false; }
+    if (!ja) { ausLink = ''; wzAusLink = null; khAusLink = null; }
+  }
   if (ausLink) schreiben(ausLink);
   if (ausLink && wzAusLink) { try { localStorage.setItem(WZ_SPEICHER, wzAusLink[1]); } catch (e) {} }
   if (ausLink && khAusLink) { try { localStorage.setItem(KH_SPEICHER, khAusLink[1]); } catch (e) {} }
